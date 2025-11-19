@@ -2,10 +2,10 @@
 
 set -e
 
-# mqv installation script
+# mq-view installation script
 
-readonly MQV_REPO="harehare/mqv"
-readonly MQV_INSTALL_DIR="$HOME/.mqv"
+readonly MQV_REPO="harehare/mq-view"
+readonly MQV_INSTALL_DIR="$HOME/.mq"
 readonly MQV_BIN_DIR="$MQV_INSTALL_DIR/bin"
 
 
@@ -33,20 +33,20 @@ error() {
     exit 1
 }
 
-# Display the mqv logo
+# Display the mq-view logo
 show_logo() {
     cat << 'EOF'
 
-    ███╗   ███╗ ██████╗  ██╗   ██╗
-    ████╗ ████║██╔═══██╗ ██║   ██║
-    ██╔████╔██║██║   ██║ ██║   ██║
-    ██║╚██╔╝██║██║▄▄ ██║ ╚██╗ ██╔╝
-    ██║ ╚═╝ ██║╚██████╔╝  ╚████╔╝
-    ╚═╝     ╚═╝ ╚══▀▀═╝    ╚═══╝
+    ███╗   ███╗ ██████╗       ██╗   ██╗██╗███████╗██╗    ██╗
+    ████╗ ████║██╔═══██╗      ██║   ██║██║██╔════╝██║    ██║
+    ██╔████╔██║██║   ██║█████╗██║   ██║██║█████╗  ██║ █╗ ██║
+    ██║╚██╔╝██║██║▄▄ ██║╚════╝╚██╗ ██╔╝██║██╔══╝  ██║███╗██║
+    ██║ ╚═╝ ██║╚██████╔╝       ╚████╔╝ ██║███████╗╚███╔███╔╝
+    ╚═╝     ╚═╝ ╚══▀▀═╝         ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝
 
 EOF
     echo -e "${BOLD}${CYAN}  Markdown Renderer with Syntax Highlighting${NC}"
-    echo -e "${BLUE}  mqv renders Markdown with rich text formatting${NC}"
+    echo -e "${BLUE}  mq-view renders Markdown with rich text formatting${NC}"
     echo -e "${BLUE}  and tree-sitter powered syntax highlighting${NC}"
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -114,7 +114,7 @@ get_download_url() {
         target="${arch}-unknown-linux-gnu"
     fi
 
-    echo "https://github.com/$MQV_REPO/releases/download/$version/mqv-${target}${ext}"
+    echo "https://github.com/$MQV_REPO/releases/download/$version/mq-view-${target}${ext}"
 }
 
 # Download checksums file
@@ -178,19 +178,19 @@ verify_checksum() {
     fi
 }
 
-# Download and install mqv
+# Download and install mq-view
 install_mqv() {
     local version="$1"
     local os="$2"
     local arch="$3"
     local download_url
-    local binary_name="mqv"
+    local binary_name="mq-view"
     local ext=""
     local target=""
 
     if [[ "$os" == "windows" ]]; then
         ext=".exe"
-        binary_name="mqv.exe"
+        binary_name="mq-view.exe"
         target="${arch}-pc-windows-msvc"
     elif [[ "$os" == "darwin" ]]; then
         target="${arch}-apple-darwin"
@@ -200,26 +200,31 @@ install_mqv() {
 
     download_url=$(get_download_url "$version" "$os" "$arch")
 
-    log "Downloading mqv $version for $os/$arch..."
+    log "Downloading mq-view $version for $os/$arch..."
     log "Download URL: $download_url"
 
     # Download checksums file
     local checksums_file
     checksums_file=$(download_checksums "$version")
 
-    # Create installation directory
-    mkdir -p "$MQV_BIN_DIR"
+    # Create installation directory if it doesn't exist
+    if [[ ! -d "$MQV_BIN_DIR" ]]; then
+        mkdir -p "$MQV_BIN_DIR"
+        log "Created installation directory: $MQV_BIN_DIR"
+    else
+        log "Installation directory already exists: $MQV_BIN_DIR"
+    fi
 
     # Download the binary
     local temp_file
     temp_file=$(mktemp)
 
     if ! curl -L --progress-bar "$download_url" -o "$temp_file"; then
-        error "Failed to download mqv binary"
+        error "Failed to download mq-view binary"
     fi
 
     # Verify checksum
-    local release_binary_name="mqv-${target}${ext}"
+    local release_binary_name="mq-view-${target}${ext}"
     if [[ -n "$checksums_file" && -f "$checksums_file" ]]; then
         if ! verify_checksum "$temp_file" "$checksums_file" "$release_binary_name"; then
             rm -f "$checksums_file"
@@ -235,11 +240,17 @@ install_mqv() {
     mv "$temp_file" "$MQV_BIN_DIR/$binary_name"
     chmod +x "$MQV_BIN_DIR/$binary_name"
 
-    log "mqv installed successfully to $MQV_BIN_DIR/$binary_name"
+    log "mq-view installed successfully to $MQV_BIN_DIR/$binary_name"
 }
 
-# Add mqv to PATH by updating shell profile
+# Add mq-view to PATH by updating shell profile
 update_shell_profile() {
+    # Check if the directory is already in PATH
+    if echo "$PATH" | grep -q "$MQV_BIN_DIR"; then
+        log "$MQV_BIN_DIR is already in PATH"
+        return 0
+    fi
+
     local shell_profile=""
     local shell_name
     shell_name=$(basename "$SHELL")
@@ -275,11 +286,11 @@ update_shell_profile() {
 
         if ! grep -q "$MQV_BIN_DIR" "$shell_profile" 2>/dev/null; then
             echo "" >> "$shell_profile"
-            echo "# Added by mqv installer" >> "$shell_profile"
+            echo "# Added by mq-view installer" >> "$shell_profile"
             echo "$path_export" >> "$shell_profile"
             log "Added $MQV_BIN_DIR to PATH in $shell_profile"
         else
-            warn "$MQV_BIN_DIR already exists in $shell_profile"
+            log "$MQV_BIN_DIR already exists in $shell_profile"
         fi
     else
         warn "Could not detect shell profile to update"
@@ -289,13 +300,13 @@ update_shell_profile() {
 
 # Verify installation
 verify_installation() {
-    # Check mqv installation
-    if [[ -x "$MQV_BIN_DIR/mqv" ]] || [[ -x "$MQV_BIN_DIR/mqv.exe" ]]; then
-        log "✓ mqv installation verified"
+    # Check mq-view installation
+    if [[ -x "$MQV_BIN_DIR/mq-view" ]] || [[ -x "$MQV_BIN_DIR/mq-view.exe" ]]; then
+        log "✓ mq-view installation verified"
         log "Installation verification successful!"
         return 0
     else
-        error "mqv installation verification failed"
+        error "mq-view installation verification failed"
     fi
 }
 
@@ -303,7 +314,7 @@ verify_installation() {
 show_post_install() {
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${GREEN}✨ mqv installed successfully! ✨${NC}"
+    echo -e "${BOLD}${GREEN}✨ mq-view installed successfully! ✨${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "${BOLD}${CYAN}🚀 Getting Started:${NC}"
@@ -312,14 +323,14 @@ show_post_install() {
     echo -e "     ${CYAN}source ~/.bashrc${NC} ${BLUE}(or your shell's profile)${NC}"
     echo ""
     echo -e "  ${YELLOW}2.${NC} Verify the installation:"
-    echo -e "     ${CYAN}mqv --version${NC}"
+    echo -e "     ${CYAN}mq-view --version${NC}"
     echo ""
     echo -e "  ${YELLOW}3.${NC} Get help:"
-    echo -e "     ${CYAN}mqv --help${NC}"
+    echo -e "     ${CYAN}mq-view --help${NC}"
     echo ""
     echo -e "${BOLD}${CYAN}⚡ Quick Examples:${NC}"
-    echo -e "  ${GREEN}▶${NC} ${CYAN}mqv README.md         # Render a markdown file${NC}"
-    echo -e "  ${GREEN}▶${NC} ${CYAN}echo \"# Hello\" | mqv  # Pipe markdown content${NC}"
+    echo -e "  ${GREEN}▶${NC} ${CYAN}mq-view README.md         # Render a markdown file${NC}"
+    echo -e "  ${GREEN}▶${NC} ${CYAN}echo \"# Hello\" | mq-view  # Pipe markdown content${NC}"
     echo ""
     echo -e "${BOLD}${CYAN}📚 Learn More:${NC}"
     echo -e "  ${GREEN}▶${NC} Repository: ${BLUE}https://github.com/$MQV_REPO${NC}"
@@ -348,7 +359,7 @@ main() {
     version=$(get_latest_version)
     log "Latest version: $version"
 
-    # Install mqv
+    # Install mq-view
     install_mqv "$version" "$os" "$arch"
 
     # Update shell profile
@@ -365,7 +376,7 @@ main() {
 while [[ $# -gt 0 ]]; do
     case $1 in
         --help|-h)
-            echo "mqv installation script"
+            echo "mq-view installation script"
             echo ""
             echo "Usage: $0 [options]"
             echo ""
@@ -375,7 +386,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         --version|-v)
-            echo "mqv installer v1.0.0"
+            echo "mq-view installer v1.0.0"
             exit 0
             ;;
         *)

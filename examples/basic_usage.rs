@@ -1,6 +1,6 @@
-/// Example demonstrating basic usage of the mqv library
+/// Example demonstrating basic usage of the mq_view library
 use mq_markdown::Markdown;
-use mqv::{render_markdown, render_markdown_to_string};
+use mq_view::{render_markdown, render_markdown_to_string};
 use std::io::BufWriter;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

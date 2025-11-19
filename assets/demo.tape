@@ -17,6 +17,6 @@ Type "clear"
 Enter
 Show
 
-Type `mqv demo.md`
+Type `mq-view demo.md`
 Enter
 Sleep 3s

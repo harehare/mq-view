@@ -8,7 +8,7 @@ use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, H
 /// # Examples
 ///
 /// ```rust
-/// use mqv::SyntaxHighlighter;
+/// use mq_view::SyntaxHighlighter;
 ///
 /// let mut highlighter = SyntaxHighlighter::new();
 /// let code = "fn main() { println!(\"Hello\"); }";

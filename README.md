@@ -1,6 +1,6 @@
-<h1 align="center">mqv</h1>
+<h1 align="center">mq-view</h1>
 
-[![ci](https://github.com/harehare/mqv/actions/workflows/ci.yml/badge.svg)](https://github.com/harehare/mqv/actions/workflows/ci.yml)
+[![ci](https://github.com/harehare/mq-view/actions/workflows/ci.yml/badge.svg)](https://github.com/harehare/mq-view/actions/workflows/ci.yml)
 
 A library and CLI tool for rendering Markdown documents with syntax highlighting and rich text formatting.
 Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for markdown processing.
@@ -20,18 +20,18 @@ Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for 
 ### Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/harehare/mqv/refs/heads/main/bin/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/harehare/mq-view/refs/heads/main/bin/install.sh | bash
 ```
 
 The installer will:
-- Download the latest mqv binary for your platform
-- Install it to `~/.mqv/bin/`
-- Update your shell profile to add mqv to your PATH
+- Download the latest mq-view binary for your platform
+- Install it to `~/.mq-view/bin/`
+- Update your shell profile to add mq-view to your PATH
 
 ### Cargo
 
 ```sh
-$ cargo install --git https://github.com/harehare/mqv.git
+$ cargo install --git https://github.com/harehare/mq-view.git
 ```
 
 ## Supported Languages
@@ -49,13 +49,13 @@ $ cargo install --git https://github.com/harehare/mqv.git
 View a markdown file:
 
 ```bash
-mqv README.md
+mq-view README.md
 ```
 
 Pipe markdown content:
 
 ```bash
-echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mqv
+echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 ```
 
 ### As a Library
@@ -63,12 +63,12 @@ echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mqv
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-mqv = {git = "https://github.com/harehare/mqv.git"}
+mq-view = {git = "https://github.com/harehare/mq-view.git"}
 ```
 
 Use in your code:
 ```rust
-use mqv::{render_markdown, render_markdown_to_string};
+use mq-view::{render_markdown, render_markdown_to_string};
 use mq_markdown::Markdown;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -109,7 +109,7 @@ pub fn render_markdown_to_string(markdown: &Markdown) -> io::Result<String>
 Create and use a syntax highlighter independently:
 
 ```rust
-use mqv::SyntaxHighlighter;
+use mq-view::SyntaxHighlighter;
 
 let mut highlighter = SyntaxHighlighter::new();
 let code = "fn main() { println!(\"Hello\"); }";

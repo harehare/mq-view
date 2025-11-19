@@ -35,13 +35,13 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
       - name: Rename artifact
         run: |
-          mv target/${{ matrix.target }}/release/mqv${{ matrix.ext }} target/${{ matrix.target }}/release/mqv-${{ matrix.asset_name}}${{ matrix.ext }}
+          mv target/${{ matrix.target }}/release/mq-view${{ matrix.ext }} target/${{ matrix.target }}/release/mq-view-${{ matrix.asset_name}}${{ matrix.ext }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mqv-${{ matrix.asset_name }}
+          name: mq-view-${{ matrix.asset_name }}
           path: |
-            target/${{ matrix.target }}/release/mqv-${{ matrix.asset_name}}${{ matrix.ext }}
+            target/${{ matrix.target }}/release/mq-view-${{ matrix.asset_name}}${{ matrix.ext }}
           if-no-files-found: error
           retention-days: 1
 
@@ -56,12 +56,12 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: mqv*
+          pattern: mq-view*
           path: target
       - name: Generate checksums
         run: |
           cd target
-          for file in mqv*/*; do
+          for file in mq-view*/*; do
             sha256sum "$file" >> checksums.txt
           done
           mkdir checksums

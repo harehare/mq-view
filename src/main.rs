@@ -1,14 +1,14 @@
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use mq_markdown::Markdown;
-use mqv::render_markdown;
+use mq_view::render_markdown;
 use std::fs;
 use std::io::{self, BufWriter, Write};
 use std::io::{IsTerminal, Read};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "mqv")]
+#[command(name = "mq_view")]
 #[command(author = env!("CARGO_PKG_AUTHORS"))]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "A CLI markdown viewer with rich text rendering")]

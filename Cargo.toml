@@ -1,14 +1,14 @@
 [package]
 edition = "2024"
-name = "mqv"
-version = "0.1.1"
+name = "mq-view"
+version = "0.1.2"
 
 [lib]
-name = "mqv"
+name = "mq_view"
 path = "src/lib.rs"
 
 [[bin]]
-name = "mqv"
+name = "mq-view"
 path = "src/main.rs"
 
 [dependencies]
