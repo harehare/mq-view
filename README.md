@@ -1,6 +1,7 @@
 <h1 align="center">mq-view</h1>
 
 [![ci](https://github.com/harehare/mq-view/actions/workflows/ci.yml/badge.svg)](https://github.com/harehare/mq-view/actions/workflows/ci.yml)
+[![mq language](https://img.shields.io/badge/mq-language-orange.svg)](https://github.com/harehare/mq)
 
 A library and CLI tool for rendering Markdown documents with syntax highlighting and rich text formatting.
 Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for markdown processing.
