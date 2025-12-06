@@ -93,6 +93,10 @@ impl SyntaxHighlighter {
                 tree_sitter_mq::LANGUAGE.into(),
                 tree_sitter_mq::HIGHLIGHTS_QUERY,
             ),
+            "ocaml" | "ml" => (
+                tree_sitter_ocaml::LANGUAGE_OCAML.into(),
+                tree_sitter_ocaml::HIGHLIGHTS_QUERY,
+            ),
             _ => return None,
         };
 

@@ -33,6 +33,7 @@ The installer will:
 
 ```sh
 $ cargo install --git https://github.com/harehare/mq-view.git
+$ cargo install mq-view
 ```
 
 ## Supported Languages
