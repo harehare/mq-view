@@ -136,14 +136,15 @@ pub fn render_markdown_to_string(markdown: &Markdown) -> io::Result<String> {
 
 fn detect_callout(text: &str) -> Option<&'static Callout> {
     let trimmed = text.trim();
-    if trimmed.starts_with("[!") && trimmed.contains(']') {
-        if let Some(end) = trimmed.find(']') {
-            let callout_type = &trimmed[2..end];
-            return CALLOUTS
-                .iter()
-                .find(|(name, _)| name.eq_ignore_ascii_case(callout_type))
-                .map(|(_, callout)| callout);
-        }
+    if trimmed.starts_with("[!")
+        && trimmed.contains(']')
+        && let Some(end) = trimmed.find(']')
+    {
+        let callout_type = &trimmed[2..end];
+        return CALLOUTS
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(callout_type))
+            .map(|(_, callout)| callout);
     }
     None
 }
@@ -239,7 +240,7 @@ fn render_node_inline<W: Write>(
         }
 
         Node::Code(code) => {
-            write!(writer, "{}", "```".bright_black())?;
+            write!(writer, "{}", "\n```".bright_black())?;
             if let Some(lang) = &code.lang {
                 write!(writer, "{}", lang.bright_black())?;
             }
@@ -336,11 +337,11 @@ fn render_node_inline<W: Write>(
                     match value {
                         Node::Fragment(para) => {
                             for child in &para.values {
-                                if let Node::Text(text) = child {
-                                    if detect_callout(&text.value).is_some() {
-                                        found_callout = true;
-                                        break;
-                                    }
+                                if let Node::Text(text) = child
+                                    && detect_callout(&text.value).is_some()
+                                {
+                                    found_callout = true;
+                                    break;
                                 }
                             }
                         }
@@ -482,15 +483,15 @@ fn render_callout_blockquote<W: Write>(
         match value {
             Node::Fragment(para) => {
                 for child in &para.values {
-                    if let Node::Text(text) = child {
-                        if let Some(callout) = detect_callout(&text.value) {
-                            callout_info = Some(callout);
-                            // Extract content after the callout marker
-                            if let Some(end) = text.value.find(']') {
-                                callout_text = text.value[end + 1..].trim_start().to_string();
-                            }
-                            break;
+                    if let Node::Text(text) = child
+                        && let Some(callout) = detect_callout(&text.value)
+                    {
+                        callout_info = Some(callout);
+                        // Extract content after the callout marker
+                        if let Some(end) = text.value.find(']') {
+                            callout_text = text.value[end + 1..].trim_start().to_string();
                         }
+                        break;
                     }
                 }
             }
@@ -561,7 +562,8 @@ fn render_callout_blockquote<W: Write>(
                             }
                             _ => {
                                 // Handle all other inline formatting
-                                line_content.push_str(&render_inline_content(&[child.clone()]));
+                                line_content
+                                    .push_str(&render_inline_content(std::slice::from_ref(child)));
                             }
                         }
                     }

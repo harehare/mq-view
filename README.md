@@ -63,12 +63,14 @@ echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 ### As a Library
 
 Add to your `Cargo.toml`:
+
 ```toml
 [dependencies]
 mq-view = {git = "https://github.com/harehare/mq-view.git"}
 ```
 
 Use in your code:
+
 ```rust
 use mq-view::{render_markdown, render_markdown_to_string};
 use mq_markdown::Markdown;
@@ -124,6 +126,7 @@ println!("{}", highlighted);
 See the [examples](examples/) directory for more usage examples.
 
 Run an example:
+
 ```bash
 cargo run --example basic_usage
 ```
