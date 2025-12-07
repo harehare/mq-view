@@ -10,7 +10,7 @@ license = "MIT"
 name = "mq-view"
 readme = "README.md"
 repository = "https://github.com/harehare/mq-view"
-version = "0.1.3"
+version = "0.1.4"
 
 [lib]
 name = "mq_view"
