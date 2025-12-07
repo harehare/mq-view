@@ -97,6 +97,10 @@ impl SyntaxHighlighter {
                 tree_sitter_ocaml::LANGUAGE_OCAML.into(),
                 tree_sitter_ocaml::HIGHLIGHTS_QUERY,
             ),
+            "swift" => (
+                tree_sitter_swift::LANGUAGE.into(),
+                tree_sitter_swift::HIGHLIGHTS_QUERY,
+            ),
             _ => return None,
         };
 

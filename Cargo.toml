@@ -45,6 +45,7 @@ tree-sitter-mq = {git = "https://github.com/harehare/tree-sitter-mq.git"}
 tree-sitter-ocaml = "0.24.2"
 tree-sitter-python = "0.25.0"
 tree-sitter-rust = "0.24"
+tree-sitter-swift = "0.7.1"
 tree-sitter-toml = "0.20.0"
 tree-sitter-typescript = "0.23.2"
 viuer = {version = "0.9"}
