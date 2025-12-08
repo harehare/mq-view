@@ -52,3 +52,10 @@ viuer = {version = "0.9"}
 
 [dev-dependencies]
 rstest = "0.26.1"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+panic = "abort"
+strip = true
