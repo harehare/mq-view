@@ -20,6 +20,49 @@ path = "src/lib.rs"
 name = "mq-view"
 path = "src/main.rs"
 
+[features]
+default = ["lang-rust", "lang-javascript", "lang-typescript", "lang-python", "lang-json", "lang-bash", "lang-html", "lang-css", "lang-mq"]
+all-languages = [
+    "lang-bash",
+    "lang-c",
+    "lang-clojure",
+    "lang-cpp",
+    "lang-css",
+    "lang-elm",
+    "lang-go",
+    "lang-haskell",
+    "lang-html",
+    "lang-java",
+    "lang-javascript",
+    "lang-json",
+    "lang-mq",
+    "lang-ocaml",
+    "lang-python",
+    "lang-rust",
+    "lang-swift",
+    "lang-toml",
+    "lang-typescript",
+]
+lang-bash = ["dep:tree-sitter-bash"]
+lang-c = ["dep:tree-sitter-c"]
+lang-clojure = ["dep:tree-sitter-clojure"]
+lang-cpp = ["dep:tree-sitter-cpp"]
+lang-css = ["dep:tree-sitter-css"]
+lang-elm = ["dep:tree-sitter-elm"]
+lang-go = ["dep:tree-sitter-go"]
+lang-haskell = ["dep:tree-sitter-haskell"]
+lang-html = ["dep:tree-sitter-html"]
+lang-java = ["dep:tree-sitter-java"]
+lang-javascript = ["dep:tree-sitter-javascript"]
+lang-json = ["dep:tree-sitter-json"]
+lang-mq = ["dep:tree-sitter-mq"]
+lang-ocaml = ["dep:tree-sitter-ocaml"]
+lang-python = ["dep:tree-sitter-python"]
+lang-rust = ["dep:tree-sitter-rust"]
+lang-swift = ["dep:tree-sitter-swift"]
+lang-toml = ["dep:tree-sitter-toml"]
+lang-typescript = ["dep:tree-sitter-typescript"]
+
 [dependencies]
 clap = {version = "4.5.53", features = ["derive"]}
 colored = "3.0.0"
@@ -28,26 +71,26 @@ itertools = "0.14.0"
 miette = {version = "7.6.0", features = ["fancy"]}
 mq-markdown = "0.5.6"
 tree-sitter = "0.25.10"
-tree-sitter-bash = "0.25"
-tree-sitter-c = "0.24"
-tree-sitter-clojure = "0.1.0"
-tree-sitter-cpp = "0.23.4"
-tree-sitter-css = "0.25"
-tree-sitter-elm = "5.9.0"
-tree-sitter-go = "0.25"
-tree-sitter-haskell = "0.23.1"
+tree-sitter-bash = {version = "0.25", optional = true}
+tree-sitter-c = {version = "0.24", optional = true}
+tree-sitter-clojure = {version = "0.1.0", optional = true}
+tree-sitter-cpp = {version = "0.23.4", optional = true}
+tree-sitter-css = {version = "0.25", optional = true}
+tree-sitter-elm = {version = "5.9.0", optional = true}
+tree-sitter-go = {version = "0.25", optional = true}
+tree-sitter-haskell = {version = "0.23.1", optional = true}
 tree-sitter-highlight = "0.25.10"
-tree-sitter-html = "0.23"
-tree-sitter-java = "0.23"
-tree-sitter-javascript = "0.25"
-tree-sitter-json = "0.24"
-tree-sitter-mq = "0.1.2"
-tree-sitter-ocaml = "0.24.2"
-tree-sitter-python = "0.25.0"
-tree-sitter-rust = "0.24"
-tree-sitter-swift = "0.7.1"
-tree-sitter-toml = "0.20.0"
-tree-sitter-typescript = "0.23.2"
+tree-sitter-html = {version = "0.23", optional = true}
+tree-sitter-java = {version = "0.23", optional = true}
+tree-sitter-javascript = {version = "0.25", optional = true}
+tree-sitter-json = {version = "0.24", optional = true}
+tree-sitter-mq = {version = "0.1.2", optional = true}
+tree-sitter-ocaml = {version = "0.24.2", optional = true}
+tree-sitter-python = {version = "0.25.0", optional = true}
+tree-sitter-rust = {version = "0.24", optional = true}
+tree-sitter-swift = {version = "0.7.1", optional = true}
+tree-sitter-toml = {version = "0.20.0", optional = true}
+tree-sitter-typescript = {version = "0.23.2", optional = true}
 viuer = {version = "0.11"}
 
 [dev-dependencies]

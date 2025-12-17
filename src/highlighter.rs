@@ -29,74 +29,92 @@ impl SyntaxHighlighter {
     /// Get the appropriate tree-sitter language and highlight configuration for a given language
     fn get_highlight_config(lang: &str) -> Option<HighlightConfiguration> {
         let (language, query) = match lang.to_lowercase().as_str() {
+            #[cfg(feature = "lang-rust")]
             "rust" | "rs" => (
                 tree_sitter_rust::LANGUAGE.into(),
                 tree_sitter_rust::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-javascript")]
             "javascript" | "js" => (
                 tree_sitter_javascript::LANGUAGE.into(),
                 tree_sitter_javascript::HIGHLIGHT_QUERY,
             ),
+            #[cfg(feature = "lang-typescript")]
             "typescript" | "ts" => (
                 tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
                 tree_sitter_typescript::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-typescript")]
             "tsx" => (
                 tree_sitter_typescript::LANGUAGE_TSX.into(),
                 tree_sitter_typescript::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-python")]
             "python" | "py" => (
                 tree_sitter_python::LANGUAGE.into(),
                 tree_sitter_python::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-go")]
             "go" => (
                 tree_sitter_go::LANGUAGE.into(),
                 tree_sitter_go::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-html")]
             "html" => (
                 tree_sitter_html::LANGUAGE.into(),
                 tree_sitter_html::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-css")]
             "css" => (
                 tree_sitter_css::LANGUAGE.into(),
                 tree_sitter_css::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-json")]
             "json" => (
                 tree_sitter_json::LANGUAGE.into(),
                 tree_sitter_json::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-bash")]
             "bash" | "sh" => (
                 tree_sitter_bash::LANGUAGE.into(),
                 tree_sitter_bash::HIGHLIGHT_QUERY,
             ),
+            #[cfg(feature = "lang-c")]
             "c" => (
                 tree_sitter_c::LANGUAGE.into(),
                 tree_sitter_c::HIGHLIGHT_QUERY,
             ),
+            #[cfg(feature = "lang-cpp")]
             "cpp" | "c++" | "cxx" => (
                 tree_sitter_cpp::LANGUAGE.into(),
                 tree_sitter_cpp::HIGHLIGHT_QUERY,
             ),
+            #[cfg(feature = "lang-java")]
             "java" => (
                 tree_sitter_java::LANGUAGE.into(),
                 tree_sitter_java::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-haskell")]
             "hs" | "haskell" => (
                 tree_sitter_haskell::LANGUAGE.into(),
                 tree_sitter_haskell::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-elm")]
             "elm" => (
                 tree_sitter_elm::LANGUAGE.into(),
                 tree_sitter_elm::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-mq")]
             "mq" => (
                 tree_sitter_mq::LANGUAGE.into(),
                 tree_sitter_mq::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-ocaml")]
             "ocaml" | "ml" => (
                 tree_sitter_ocaml::LANGUAGE_OCAML.into(),
                 tree_sitter_ocaml::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-swift")]
             "swift" => (
                 tree_sitter_swift::LANGUAGE.into(),
                 tree_sitter_swift::HIGHLIGHTS_QUERY,
@@ -237,25 +255,22 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case::rust("rust", r#"fn main() { println!("Hello, world!"); }"#)]
-    #[case::python("python", r#"def main(): print("Hello, world!")"#)]
-    #[case::js("javascript", r#"function main() { console.log('Hello, world!'); }"#)]
-    #[case::ts(
-        "typescript",
-        r#"function main(): void { console.log('Hello, world!'); }"#
-    )]
-    #[case::go("go", r#"func main() { fmt.Println("Hello, world!") }"#)]
-    #[case::html("html", r#"<h1>Hello</h1>"#)]
-    #[case::css("css", r#"body { color: red; }"#)]
-    #[case::json("json", r#"{ "hello": "world" }"#)]
-    #[case::bash("bash", r#"echo 'Hello, world!'"#)]
-    #[case::c("c", r#"int main() { printf("Hello, world!"); }"#)]
-    #[case::java("java", r#"public class Main { public static void main(String[] args) { System.out.println("Hello, world!"); } }"#)]
-    #[case::haskell("haskell", r#"main = putStrLn "Hello, world!""#)]
-    #[case::elm("elm", r#"main = text "Hello, world!""#)]
-    #[case::mq("mq", r#"fn(): "Hello, world!""#)]
-    #[case::bool("mq", r#"fn(): true"#)]
-    #[case::number("mq", r#"fn(): 42"#)]
+    #[cfg_attr(feature = "lang-rust", case::rust("rust", r#"fn main() { println!("Hello, world!"); }"#))]
+    #[cfg_attr(feature = "lang-python", case::python("python", r#"def main(): print("Hello, world!")"#))]
+    #[cfg_attr(feature = "lang-javascript", case::js("javascript", r#"function main() { console.log('Hello, world!'); }"#))]
+    #[cfg_attr(feature = "lang-typescript", case::ts("typescript", r#"function main(): void { console.log('Hello, world!'); }"#))]
+    #[cfg_attr(feature = "lang-go", case::go("go", r#"func main() { fmt.Println("Hello, world!") }"#))]
+    #[cfg_attr(feature = "lang-html", case::html("html", r#"<h1>Hello</h1>"#))]
+    #[cfg_attr(feature = "lang-css", case::css("css", r#"body { color: red; }"#))]
+    #[cfg_attr(feature = "lang-json", case::json("json", r#"{ "hello": "world" }"#))]
+    #[cfg_attr(feature = "lang-bash", case::bash("bash", r#"echo 'Hello, world!'"#))]
+    #[cfg_attr(feature = "lang-c", case::c("c", r#"int main() { printf("Hello, world!"); }"#))]
+    #[cfg_attr(feature = "lang-java", case::java("java", r#"public class Main { public static void main(String[] args) { System.out.println("Hello, world!"); } }"#))]
+    #[cfg_attr(feature = "lang-haskell", case::haskell("haskell", r#"main = putStrLn "Hello, world!""#))]
+    #[cfg_attr(feature = "lang-elm", case::elm("elm", r#"main = text "Hello, world!""#))]
+    #[cfg_attr(feature = "lang-mq", case::mq("mq", r#"fn(): "Hello, world!""#))]
+    #[cfg_attr(feature = "lang-mq", case::bool("mq", r#"fn(): true"#))]
+    #[cfg_attr(feature = "lang-mq", case::number("mq", r#"fn(): 42"#))]
     fn test_highlighting_for_supported_languages(#[case] lang: &str, #[case] code: &str) {
         let mut highlighter = SyntaxHighlighter::new();
         let result = highlighter.highlight(code, Some(lang));
