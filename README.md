@@ -29,9 +29,16 @@ The installer will:
 
 ### Cargo
 
+From crates.io (stable):
+
 ```sh
-$ cargo install --git https://github.com/harehare/mq-view.git
-$ cargo install mq-view
+cargo install mq-view
+```
+
+From git (latest):
+
+```sh
+cargo install --git https://github.com/harehare/mq-view.git
 ```
 
 ## Supported Languages
