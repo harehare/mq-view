@@ -69,7 +69,7 @@ colored = "3.0.0"
 image = "0.25"
 itertools = "0.14.0"
 miette = {version = "7.6.0", features = ["fancy"]}
-mq-markdown = "0.5.7"
+mq-markdown = "0.5.8"
 tree-sitter = "0.25.10"
 tree-sitter-bash = {version = "0.25", optional = true}
 tree-sitter-c = {version = "0.24", optional = true}
