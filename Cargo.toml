@@ -21,7 +21,7 @@ name = "mq-view"
 path = "src/main.rs"
 
 [features]
-default = ["lang-rust", "lang-javascript", "lang-typescript", "lang-python", "lang-json", "lang-bash", "lang-html", "lang-css", "lang-mq"]
+default = ["lang-rust", "lang-javascript", "lang-typescript", "lang-python", "lang-json", "lang-bash", "lang-html", "lang-css", "lang-mq", "lang-elixir"]
 all-languages = [
     "lang-bash",
     "lang-c",
@@ -42,6 +42,7 @@ all-languages = [
     "lang-swift",
     "lang-toml",
     "lang-typescript",
+    "lang-elixir",
 ]
 lang-bash = ["dep:tree-sitter-bash"]
 lang-c = ["dep:tree-sitter-c"]
@@ -62,6 +63,7 @@ lang-rust = ["dep:tree-sitter-rust"]
 lang-swift = ["dep:tree-sitter-swift"]
 lang-toml = ["dep:tree-sitter-toml"]
 lang-typescript = ["dep:tree-sitter-typescript"]
+lang-elixir= ["dep:tree-sitter-elixir"]
 
 [dependencies]
 clap = {version = "4.5.53", features = ["derive"]}
@@ -76,6 +78,7 @@ tree-sitter-c = {version = "0.24", optional = true}
 tree-sitter-clojure = {version = "0.1.0", optional = true}
 tree-sitter-cpp = {version = "0.23.4", optional = true}
 tree-sitter-css = {version = "0.25", optional = true}
+tree-sitter-elixir = {version = "0.3.4", optional = true}
 tree-sitter-elm = {version = "5.9.0", optional = true}
 tree-sitter-go = {version = "0.25", optional = true}
 tree-sitter-haskell = {version = "0.23.1", optional = true}

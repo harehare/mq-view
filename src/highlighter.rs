@@ -119,6 +119,11 @@ impl SyntaxHighlighter {
                 tree_sitter_swift::LANGUAGE.into(),
                 tree_sitter_swift::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-elixir")]
+            "ex" | "exs" => (
+                tree_sitter_elixir::LANGUAGE.into(),
+                tree_sitter_elixir::HIGHLIGHTS_QUERY,
+            ),
             _ => return None,
         };
 
@@ -255,19 +260,46 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[cfg_attr(feature = "lang-rust", case::rust("rust", r#"fn main() { println!("Hello, world!"); }"#))]
-    #[cfg_attr(feature = "lang-python", case::python("python", r#"def main(): print("Hello, world!")"#))]
-    #[cfg_attr(feature = "lang-javascript", case::js("javascript", r#"function main() { console.log('Hello, world!'); }"#))]
-    #[cfg_attr(feature = "lang-typescript", case::ts("typescript", r#"function main(): void { console.log('Hello, world!'); }"#))]
-    #[cfg_attr(feature = "lang-go", case::go("go", r#"func main() { fmt.Println("Hello, world!") }"#))]
+    #[cfg_attr(
+        feature = "lang-rust",
+        case::rust("rust", r#"fn main() { println!("Hello, world!"); }"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-python",
+        case::python("python", r#"def main(): print("Hello, world!")"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-javascript",
+        case::js("javascript", r#"function main() { console.log('Hello, world!'); }"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-typescript",
+        case::ts(
+            "typescript",
+            r#"function main(): void { console.log('Hello, world!'); }"#
+        )
+    )]
+    #[cfg_attr(
+        feature = "lang-go",
+        case::go("go", r#"func main() { fmt.Println("Hello, world!") }"#)
+    )]
     #[cfg_attr(feature = "lang-html", case::html("html", r#"<h1>Hello</h1>"#))]
     #[cfg_attr(feature = "lang-css", case::css("css", r#"body { color: red; }"#))]
     #[cfg_attr(feature = "lang-json", case::json("json", r#"{ "hello": "world" }"#))]
     #[cfg_attr(feature = "lang-bash", case::bash("bash", r#"echo 'Hello, world!'"#))]
-    #[cfg_attr(feature = "lang-c", case::c("c", r#"int main() { printf("Hello, world!"); }"#))]
+    #[cfg_attr(
+        feature = "lang-c",
+        case::c("c", r#"int main() { printf("Hello, world!"); }"#)
+    )]
     #[cfg_attr(feature = "lang-java", case::java("java", r#"public class Main { public static void main(String[] args) { System.out.println("Hello, world!"); } }"#))]
-    #[cfg_attr(feature = "lang-haskell", case::haskell("haskell", r#"main = putStrLn "Hello, world!""#))]
-    #[cfg_attr(feature = "lang-elm", case::elm("elm", r#"main = text "Hello, world!""#))]
+    #[cfg_attr(
+        feature = "lang-haskell",
+        case::haskell("haskell", r#"main = putStrLn "Hello, world!""#)
+    )]
+    #[cfg_attr(
+        feature = "lang-elm",
+        case::elm("elm", r#"main = text "Hello, world!""#)
+    )]
     #[cfg_attr(feature = "lang-mq", case::mq("mq", r#"fn(): "Hello, world!""#))]
     #[cfg_attr(feature = "lang-mq", case::bool("mq", r#"fn(): true"#))]
     #[cfg_attr(feature = "lang-mq", case::number("mq", r#"fn(): 42"#))]
