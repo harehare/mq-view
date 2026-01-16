@@ -67,7 +67,7 @@ lang-elixir= ["dep:tree-sitter-elixir"]
 
 [dependencies]
 clap = {version = "4.5.54", features = ["derive"]}
-colored = "3.0.0"
+colored = "3.1.1"
 image = "0.25"
 itertools = "0.14.0"
 miette = {version = "7.6.0", features = ["fancy"]}
