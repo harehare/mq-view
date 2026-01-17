@@ -3,12 +3,23 @@ use colored::*;
 use mq_markdown::{Markdown, Node};
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::LazyLock;
+use terminal_size::{Height, Width, terminal_size};
 
 /// Unicode header symbols (①②③④⑤⑥)
 const HEADER_SYMBOLS: &[&str] = &["①", "②", "③", "④", "⑤", "⑥"];
 
 /// Unicode bullet symbols for lists
 const LIST_BULLETS: &[&str] = &["●", "○", "◆", "◇"];
+
+static WIDTH: LazyLock<usize> = LazyLock::new(|| {
+    let size = terminal_size();
+    if let Some((Width(w), Height(_))) = size {
+        w.into()
+    } else {
+        80
+    }
+});
 
 /// GitHub-style callout definitions
 #[derive(Debug, Clone)]
@@ -176,46 +187,58 @@ fn render_node_inline<W: Write>(
                 .unwrap_or(&"⑥");
 
             let text = render_inline_content(&heading.values);
+            let padding = WIDTH.saturating_sub(text.chars().count() + 2);
+            let line = format!("{}{}", text, " ".repeat(padding));
 
             // Fallback: Use decorative elements to simulate size differences
             match heading.depth {
                 1 => {
                     // h1: Largest - double lines above and below with large text
-                    let line = "═".repeat(text.chars().count() + 4);
-                    writeln!(writer, "{}", line.bright_blue())?;
                     writeln!(
                         writer,
-                        "{} {}",
-                        symbol.bold().bright_blue(),
-                        text.bold().bright_blue(),
+                        "{}{}{}",
+                        symbol.bold().on_bright_blue(),
+                        " ".on_bright_blue(),
+                        line.bold().on_bright_blue()
                     )?;
-                    writeln!(writer, "{}", line.bright_blue())?;
                 }
                 2 => {
                     // h2: Large - single line below
-                    writeln!(writer, "{} {}", symbol.bold().cyan(), text.bold().cyan())?;
-                    let line = "─".repeat(text.chars().count() + 4);
-                    writeln!(writer, "{}", line.cyan())?;
+                    writeln!(
+                        writer,
+                        "{}{}{}",
+                        symbol.bold().on_cyan(),
+                        " ".on_cyan(),
+                        line.bold().on_cyan()
+                    )?;
                 }
                 3 => {
                     // h3: Medium - double symbol
                     writeln!(
                         writer,
-                        "{} {}",
-                        symbol.bold().yellow(),
-                        text.bold().yellow()
+                        "{}{}{}",
+                        symbol.bold().on_yellow(),
+                        " ".on_yellow(),
+                        line.bold().on_yellow()
                     )?;
                 }
                 4 => {
                     // h4: Regular with extra spacing
-                    writeln!(writer, "{} {}", symbol.bold().green(), text.bold().green())?;
+                    writeln!(
+                        writer,
+                        "{}{}{}",
+                        symbol.bold().on_green(),
+                        " ".on_green(),
+                        line.bold().on_green()
+                    )?;
                 }
                 5 => {
                     writeln!(
                         writer,
-                        "{} {}",
-                        symbol.bold().magenta(),
-                        text.bold().magenta()
+                        "{}{}{}",
+                        symbol.bold().on_magenta(),
+                        " ".on_magenta(),
+                        line.bold().on_magenta()
                     )?;
                 }
                 _ => {

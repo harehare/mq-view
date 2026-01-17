@@ -21,34 +21,35 @@ name = "mq-view"
 path = "src/main.rs"
 
 [features]
-default = ["lang-rust", "lang-javascript", "lang-typescript", "lang-python", "lang-json", "lang-bash", "lang-html", "lang-css", "lang-mq", "lang-elixir"]
 all-languages = [
-    "lang-bash",
-    "lang-c",
-    "lang-clojure",
-    "lang-cpp",
-    "lang-css",
-    "lang-elm",
-    "lang-go",
-    "lang-haskell",
-    "lang-html",
-    "lang-java",
-    "lang-javascript",
-    "lang-json",
-    "lang-mq",
-    "lang-ocaml",
-    "lang-python",
-    "lang-rust",
-    "lang-swift",
-    "lang-toml",
-    "lang-typescript",
-    "lang-elixir",
+  "lang-bash",
+  "lang-c",
+  "lang-clojure",
+  "lang-cpp",
+  "lang-css",
+  "lang-elm",
+  "lang-go",
+  "lang-haskell",
+  "lang-html",
+  "lang-java",
+  "lang-javascript",
+  "lang-json",
+  "lang-mq",
+  "lang-ocaml",
+  "lang-python",
+  "lang-rust",
+  "lang-swift",
+  "lang-toml",
+  "lang-typescript",
+  "lang-elixir",
 ]
+default = ["lang-rust", "lang-javascript", "lang-typescript", "lang-python", "lang-json", "lang-bash", "lang-html", "lang-css", "lang-mq", "lang-elixir"]
 lang-bash = ["dep:tree-sitter-bash"]
 lang-c = ["dep:tree-sitter-c"]
 lang-clojure = ["dep:tree-sitter-clojure"]
 lang-cpp = ["dep:tree-sitter-cpp"]
 lang-css = ["dep:tree-sitter-css"]
+lang-elixir = ["dep:tree-sitter-elixir"]
 lang-elm = ["dep:tree-sitter-elm"]
 lang-go = ["dep:tree-sitter-go"]
 lang-haskell = ["dep:tree-sitter-haskell"]
@@ -63,7 +64,6 @@ lang-rust = ["dep:tree-sitter-rust"]
 lang-swift = ["dep:tree-sitter-swift"]
 lang-toml = ["dep:tree-sitter-toml"]
 lang-typescript = ["dep:tree-sitter-typescript"]
-lang-elixir= ["dep:tree-sitter-elixir"]
 
 [dependencies]
 clap = {version = "4.5.54", features = ["derive"]}
@@ -72,6 +72,7 @@ image = "0.25"
 itertools = "0.14.0"
 miette = {version = "7.6.0", features = ["fancy"]}
 mq-markdown = "0.5.11"
+terminal_size = "0.4.3"
 tree-sitter = "0.25.10"
 tree-sitter-bash = {version = "0.25", optional = true}
 tree-sitter-c = {version = "0.24", optional = true}

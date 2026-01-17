@@ -926,6 +926,7 @@ dependencies = [
  "miette",
  "mq-markdown",
  "rstest",
+ "terminal_size",
  "tree-sitter 0.25.10",
  "tree-sitter-bash",
  "tree-sitter-c",
