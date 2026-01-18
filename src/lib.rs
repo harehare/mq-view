@@ -18,4 +18,4 @@ mod highlighter;
 mod renderer;
 
 pub use highlighter::SyntaxHighlighter;
-pub use renderer::{render_markdown, render_markdown_to_string};
+pub use renderer::{render_markdown, render_markdown_to_string, render_markdown_with_config, RenderConfig};

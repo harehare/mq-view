@@ -6,6 +6,21 @@ use std::path::Path;
 use std::sync::LazyLock;
 use terminal_size::{Height, Width, terminal_size};
 
+/// Configuration for rendering markdown
+#[derive(Debug, Clone)]
+pub struct RenderConfig {
+    /// Enable full-width background highlighting for headers
+    pub header_full_width_highlight: bool,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self {
+            header_full_width_highlight: true,
+        }
+    }
+}
+
 /// Unicode header symbols (①②③④⑤⑥)
 const HEADER_SYMBOLS: &[&str] = &["①", "②", "③", "④", "⑤", "⑥"];
 
@@ -100,6 +115,19 @@ fn make_clickable_link(url: &str, display_text: &str) -> String {
 /// }
 /// ```
 pub fn render_markdown<W: Write>(markdown: &Markdown, writer: &mut W) -> io::Result<()> {
+    render_markdown_with_config(markdown, writer, &RenderConfig::default())
+}
+
+/// Render a Markdown document to a writer with custom configuration.
+///
+/// # Errors
+///
+/// Returns an `io::Error` if writing to the output fails.
+pub fn render_markdown_with_config<W: Write>(
+    markdown: &Markdown,
+    writer: &mut W,
+    config: &RenderConfig,
+) -> io::Result<()> {
     let mut highlighter = SyntaxHighlighter::new();
     let mut i = 0;
     let len = markdown.nodes.len();
@@ -120,7 +148,7 @@ pub fn render_markdown<W: Write>(markdown: &Markdown, writer: &mut W) -> io::Res
             render_table(&table_nodes, &mut highlighter, writer)?;
             i += table_nodes.len();
         } else {
-            render_node(node, 0, &mut highlighter, writer)?;
+            render_node(node, 0, &mut highlighter, config, writer)?;
             i += 1;
         }
     }
@@ -164,9 +192,10 @@ fn render_node<W: Write>(
     node: &Node,
     depth: usize,
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
-    render_node_inline(node, depth, false, highlighter, writer)
+    render_node_inline(node, depth, false, highlighter, config, writer)
 }
 
 fn render_node_inline<W: Write>(
@@ -174,6 +203,7 @@ fn render_node_inline<W: Write>(
     depth: usize,
     inline: bool,
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     match node {
@@ -187,62 +217,108 @@ fn render_node_inline<W: Write>(
                 .unwrap_or(&"⑥");
 
             let text = render_inline_content(&heading.values);
-            let padding = WIDTH.saturating_sub(text.chars().count() + 2);
-            let line = format!("{}{}", text, " ".repeat(padding));
 
-            // Fallback: Use decorative elements to simulate size differences
-            match heading.depth {
-                1 => {
-                    // h1: Largest - double lines above and below with large text
-                    writeln!(
-                        writer,
-                        "{}{}{}",
-                        symbol.bold().on_bright_blue(),
-                        " ".on_bright_blue(),
-                        line.bold().on_bright_blue()
-                    )?;
+            if config.header_full_width_highlight {
+                let padding = WIDTH.saturating_sub(text.chars().count() + 2);
+                let line = format!("{}{}", text, " ".repeat(padding));
+
+                // Full-width background highlighting
+                match heading.depth {
+                    1 => {
+                        writeln!(
+                            writer,
+                            "{}{}{}",
+                            symbol.bold().black().on_bright_blue(),
+                            " ".on_bright_blue(),
+                            line.bold().bright_black().on_bright_blue()
+                        )?;
+                    }
+                    2 => {
+                        writeln!(
+                            writer,
+                            "{}{}{}",
+                            symbol.bold().black().on_cyan(),
+                            " ".on_cyan(),
+                            line.bold().bright_black().on_cyan()
+                        )?;
+                    }
+                    3 => {
+                        writeln!(
+                            writer,
+                            "{}{}{}",
+                            symbol.bold().black().on_yellow(),
+                            " ".on_yellow(),
+                            line.bold().bright_black().on_yellow()
+                        )?;
+                    }
+                    4 => {
+                        writeln!(
+                            writer,
+                            "{}{}{}",
+                            symbol.bold().black().on_green(),
+                            " ".on_green(),
+                            line.bold().bright_black().on_green()
+                        )?;
+                    }
+                    5 => {
+                        writeln!(
+                            writer,
+                            "{}{}{}",
+                            symbol.bold().black().on_magenta(),
+                            " ".on_magenta(),
+                            line.bold().bright_black().on_magenta()
+                        )?;
+                    }
+                    _ => {
+                        writeln!(writer, "{} {}", symbol.bold().white(), text.bold().white())?;
+                    }
                 }
-                2 => {
-                    // h2: Large - single line below
-                    writeln!(
-                        writer,
-                        "{}{}{}",
-                        symbol.bold().on_cyan(),
-                        " ".on_cyan(),
-                        line.bold().on_cyan()
-                    )?;
-                }
-                3 => {
-                    // h3: Medium - double symbol
-                    writeln!(
-                        writer,
-                        "{}{}{}",
-                        symbol.bold().on_yellow(),
-                        " ".on_yellow(),
-                        line.bold().on_yellow()
-                    )?;
-                }
-                4 => {
-                    // h4: Regular with extra spacing
-                    writeln!(
-                        writer,
-                        "{}{}{}",
-                        symbol.bold().on_green(),
-                        " ".on_green(),
-                        line.bold().on_green()
-                    )?;
-                }
-                5 => {
-                    writeln!(
-                        writer,
-                        "{}{}{}",
-                        symbol.bold().on_magenta(),
-                        " ".on_magenta(),
-                        line.bold().on_magenta()
-                    )?;
-                }
-                _ => {
-                    writeln!(writer, "{} {}", symbol.bold().white(), text.bold().white())?;
+            } else {
+                // Simple header without full-width highlighting
+                match heading.depth {
+                    1 => {
+                        writeln!(
+                            writer,
+                            "{} {}",
+                            symbol.bold().bright_blue(),
+                            text.bold().bright_blue()
+                        )?;
+                    }
+                    2 => {
+                        writeln!(
+                            writer,
+                            "{} {}",
+                            symbol.bold().cyan(),
+                            text.bold().cyan()
+                        )?;
+                    }
+                    3 => {
+                        writeln!(
+                            writer,
+                            "{} {}",
+                            symbol.bold().yellow(),
+                            text.bold().yellow()
+                        )?;
+                    }
+                    4 => {
+                        writeln!(
+                            writer,
+                            "{} {}",
+                            symbol.bold().green(),
+                            text.bold().green()
+                        )?;
+                    }
+                    5 => {
+                        writeln!(
+                            writer,
+                            "{} {}",
+                            symbol.bold().magenta(),
+                            text.bold().magenta()
+                        )?;
+                    }
+                    _ => {
+                        writeln!(writer, "{} {}", symbol.bold().white(), text.bold().white())?;
+                    }
                 }
             }
             writeln!(writer)?;
@@ -259,7 +335,7 @@ fn render_node_inline<W: Write>(
         }
 
         Node::List(list) => {
-            render_list(list, depth, highlighter, writer)?;
+            render_list(list, depth, highlighter, config, writer)?;
         }
 
         Node::Code(code) => {
@@ -384,9 +460,9 @@ fn render_node_inline<W: Write>(
             };
 
             if is_callout {
-                render_callout_blockquote(blockquote, depth, highlighter, writer)?;
+                render_callout_blockquote(blockquote, depth, highlighter, config, writer)?;
             } else {
-                render_regular_blockquote(blockquote, depth, highlighter, writer)?;
+                render_regular_blockquote(blockquote, depth, highlighter, config, writer)?;
             }
 
             writeln!(writer)?;
@@ -409,7 +485,7 @@ fn render_node_inline<W: Write>(
         Node::Fragment(fragment) => {
             // Render paragraph as inline content on one line
             for child in &fragment.values {
-                render_node_inline(child, depth, true, highlighter, writer)?;
+                render_node_inline(child, depth, true, highlighter, config, writer)?;
             }
             // Add newline after paragraph unless we're inline
             if !inline {
@@ -426,14 +502,14 @@ fn render_node_inline<W: Write>(
             // Individual table cells outside of tables
             // Calculate column widths for this cell
             let column_widths = calculate_column_widths(&[Node::TableCell(cell.clone())]);
-            render_table_cell(cell, &column_widths, highlighter, writer)?;
+            render_table_cell(cell, &column_widths, highlighter, config, writer)?;
         }
 
         // Handle other node types recursively if they have children
         _ => {
             if let Some(children) = get_node_children(node) {
                 for child in children {
-                    render_node_inline(child, depth, inline, highlighter, writer)?;
+                    render_node_inline(child, depth, inline, highlighter, config, writer)?;
                 }
             }
         }
@@ -446,6 +522,7 @@ fn render_list<W: Write>(
     list: &mq_markdown::List,
     depth: usize,
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     let indent = "  ".repeat(depth);
@@ -472,17 +549,17 @@ fn render_list<W: Write>(
                 if has_content {
                     writeln!(writer)?; // New line before nested list only if we had content
                 }
-                render_list(nested_list, depth + 1, highlighter, writer)?;
+                render_list(nested_list, depth + 1, highlighter, config, writer)?;
             }
             Node::Fragment(fragment) => {
                 // Handle paragraph content inline
                 for child in &fragment.values {
-                    render_node_inline(child, depth + 1, true, highlighter, writer)?;
+                    render_node_inline(child, depth + 1, true, highlighter, config, writer)?;
                 }
                 has_content = true;
             }
             _ => {
-                render_node_inline(value, depth + 1, true, highlighter, writer)?;
+                render_node_inline(value, depth + 1, true, highlighter, config, writer)?;
                 has_content = true;
             }
         }
@@ -496,6 +573,7 @@ fn render_callout_blockquote<W: Write>(
     blockquote: &mq_markdown::Blockquote,
     _depth: usize,
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     // Find the callout type from any text node in the blockquote
@@ -597,7 +675,7 @@ fn render_callout_blockquote<W: Write>(
                 _ => {
                     if found_callout_marker {
                         write!(writer, "│ ")?;
-                        render_node_inline(value, 0, false, highlighter, writer)?;
+                        render_node_inline(value, 0, false, highlighter, config, writer)?;
                     }
                 }
             }
@@ -612,11 +690,12 @@ fn render_regular_blockquote<W: Write>(
     blockquote: &mq_markdown::Blockquote,
     depth: usize,
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     for value in &blockquote.values {
         write!(writer, "{} ", "▌".bright_black())?;
-        render_node_inline(value, depth, false, highlighter, writer)?;
+        render_node_inline(value, depth, false, highlighter, config, writer)?;
     }
     Ok(())
 }
@@ -675,6 +754,9 @@ fn render_table<W: Write>(
         return Ok(());
     }
 
+    // Tables don't use full-width highlighting, use default config
+    let config = RenderConfig::default();
+
     // Calculate column widths from all cells
     let all_nodes: Vec<Node> = table_nodes.iter().map(|n| (*n).clone()).collect();
     let column_widths = calculate_column_widths(&all_nodes);
@@ -706,7 +788,7 @@ fn render_table<W: Write>(
                 let width = column_widths.get(cell.column).copied().unwrap_or(0);
 
                 for value in &cell.values {
-                    render_node_inline(value, 0, true, highlighter, writer)?;
+                    render_node_inline(value, 0, true, highlighter, &config, writer)?;
                 }
 
                 // Pad with spaces to align columns
@@ -740,7 +822,7 @@ fn render_table<W: Write>(
                 // Already handled in the TableCell last_cell_in_row logic
             }
             Node::TableRow(row) => {
-                render_table_row(row, &column_widths, highlighter, writer)?;
+                render_table_row(row, &column_widths, highlighter, &config, writer)?;
             }
             _ => {}
         }
@@ -857,6 +939,7 @@ fn render_table_row<W: Write>(
     row: &mq_markdown::TableRow,
     column_widths: &[usize],
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     write!(writer, "{}", "│ ".bright_cyan())?;
@@ -866,7 +949,7 @@ fn render_table_row<W: Write>(
             let width = column_widths.get(col_idx).copied().unwrap_or(0);
 
             for value in &cell.values {
-                render_node_inline(value, 0, true, highlighter, writer)?;
+                render_node_inline(value, 0, true, highlighter, config, writer)?;
             }
 
             // Pad with spaces to align columns
@@ -887,6 +970,7 @@ fn render_table_cell<W: Write>(
     cell: &mq_markdown::TableCell,
     column_widths: &[usize],
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     write!(writer, "{}", "│ ".bright_cyan())?;
@@ -895,7 +979,7 @@ fn render_table_cell<W: Write>(
     let width = column_widths.get(cell.column).copied().unwrap_or(0);
 
     for value in &cell.values {
-        render_node_inline(value, 0, true, highlighter, writer)?;
+        render_node_inline(value, 0, true, highlighter, config, writer)?;
     }
 
     // Pad with spaces to align columns
