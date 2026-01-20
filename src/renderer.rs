@@ -219,7 +219,7 @@ fn render_node_inline<W: Write>(
             let text = render_inline_content(&heading.values);
 
             if config.header_full_width_highlight {
-                let padding = WIDTH.saturating_sub(text.chars().count() + 2);
+                let padding = WIDTH.saturating_sub(text.chars().count() + 3);
                 let line = format!("{}{}", text, " ".repeat(padding));
 
                 // Full-width background highlighting
@@ -229,7 +229,7 @@ fn render_node_inline<W: Write>(
                             writer,
                             "{}{}{}",
                             symbol.bold().black().on_bright_blue(),
-                            " ".on_bright_blue(),
+                            "  ".on_bright_blue(),
                             line.bold().bright_black().on_bright_blue()
                         )?;
                     }
@@ -238,7 +238,7 @@ fn render_node_inline<W: Write>(
                             writer,
                             "{}{}{}",
                             symbol.bold().black().on_cyan(),
-                            " ".on_cyan(),
+                            "  ".on_cyan(),
                             line.bold().bright_black().on_cyan()
                         )?;
                     }
@@ -247,7 +247,7 @@ fn render_node_inline<W: Write>(
                             writer,
                             "{}{}{}",
                             symbol.bold().black().on_yellow(),
-                            " ".on_yellow(),
+                            "  ".on_yellow(),
                             line.bold().bright_black().on_yellow()
                         )?;
                     }
@@ -256,7 +256,7 @@ fn render_node_inline<W: Write>(
                             writer,
                             "{}{}{}",
                             symbol.bold().black().on_green(),
-                            " ".on_green(),
+                            "  ".on_green(),
                             line.bold().bright_black().on_green()
                         )?;
                     }
@@ -265,12 +265,12 @@ fn render_node_inline<W: Write>(
                             writer,
                             "{}{}{}",
                             symbol.bold().black().on_magenta(),
-                            " ".on_magenta(),
+                            "  ".on_magenta(),
                             line.bold().bright_black().on_magenta()
                         )?;
                     }
                     _ => {
-                        writeln!(writer, "{} {}", symbol.bold().white(), text.bold().white())?;
+                        writeln!(writer, "{}  {}", symbol.bold().white(), text.bold().white())?;
                     }
                 }
             } else {
@@ -279,45 +279,35 @@ fn render_node_inline<W: Write>(
                     1 => {
                         writeln!(
                             writer,
-                            "{} {}",
+                            "{}  {}",
                             symbol.bold().bright_blue(),
                             text.bold().bright_blue()
                         )?;
                     }
                     2 => {
-                        writeln!(
-                            writer,
-                            "{} {}",
-                            symbol.bold().cyan(),
-                            text.bold().cyan()
-                        )?;
+                        writeln!(writer, "{}  {}", symbol.bold().cyan(), text.bold().cyan())?;
                     }
                     3 => {
                         writeln!(
                             writer,
-                            "{} {}",
+                            "{}  {}",
                             symbol.bold().yellow(),
                             text.bold().yellow()
                         )?;
                     }
                     4 => {
-                        writeln!(
-                            writer,
-                            "{} {}",
-                            symbol.bold().green(),
-                            text.bold().green()
-                        )?;
+                        writeln!(writer, "{}  {}", symbol.bold().green(), text.bold().green())?;
                     }
                     5 => {
                         writeln!(
                             writer,
-                            "{} {}",
+                            "{}  {}",
                             symbol.bold().magenta(),
                             text.bold().magenta()
                         )?;
                     }
                     _ => {
-                        writeln!(writer, "{} {}", symbol.bold().white(), text.bold().white())?;
+                        writeln!(writer, "{}  {}", symbol.bold().white(), text.bold().white())?;
                     }
                 }
             }

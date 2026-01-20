@@ -14,7 +14,7 @@ use std::path::PathBuf;
 #[command(about = "A CLI markdown viewer with rich text rendering")]
 pub struct Args {
     /// Disable full-width background highlighting for headers
-    #[arg(long = "header-highlight")]
+    #[arg(short = 'H', long = "header-highlight")]
     header_highlight: bool,
 
     /// Markdown file to view
