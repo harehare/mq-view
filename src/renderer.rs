@@ -141,7 +141,7 @@ pub fn render_markdown_with_config<W: Write>(
                 .take_while(|n| {
                     matches!(
                         n,
-                        Node::TableCell(_) | Node::TableHeader(_) | Node::TableRow(_)
+                        Node::TableCell(_) | Node::TableAlign(_) | Node::TableRow(_)
                     )
                 })
                 .collect();
@@ -483,7 +483,7 @@ fn render_node_inline<W: Write>(
             }
         }
 
-        Node::TableHeader(_) | Node::TableRow(_) => {
+        Node::TableAlign(_) | Node::TableRow(_) => {
             // These should be handled by render_table in render_markdown
             // If we encounter them here, skip them
         }
@@ -755,7 +755,7 @@ fn render_table<W: Write>(
     let col_count = table_nodes
         .iter()
         .find_map(|node| {
-            if let Node::TableHeader(header) = node {
+            if let Node::TableAlign(header) = node {
                 Some(header.align.len())
             } else {
                 None
@@ -789,11 +789,17 @@ fn render_table<W: Write>(
 
                 write!(writer, " {}", "│ ".bright_cyan())?;
 
-                if cell.last_cell_in_row {
+                // Check if this is the last cell in its row
+                let is_last_in_row = match table_nodes.get(i + 1) {
+                    Some(Node::TableCell(next_cell)) => next_cell.row != cell.row,
+                    _ => true,
+                };
+
+                if is_last_in_row {
                     writeln!(writer)?;
                     // Check if next node is the header separator or another cell
                     if i + 1 < table_nodes.len() {
-                        if let Some(Node::TableHeader(header)) = table_nodes.get(i + 1) {
+                        if let Some(Node::TableAlign(header)) = table_nodes.get(i + 1) {
                             render_table_header(header, &column_widths, writer)?;
                             // After header, if there's another cell, start a new row
                             if i + 2 < table_nodes.len()
@@ -808,7 +814,7 @@ fn render_table<W: Write>(
                     }
                 }
             }
-            Node::TableHeader(_) => {
+            Node::TableAlign(_) => {
                 // Already handled in the TableCell last_cell_in_row logic
             }
             Node::TableRow(row) => {
@@ -898,7 +904,7 @@ fn render_table_bottom_border<W: Write>(
 
 /// Render table header with alignment and column widths
 fn render_table_header<W: Write>(
-    header: &mq_markdown::TableHeader,
+    header: &mq_markdown::TableAlign,
     column_widths: &[usize],
     writer: &mut W,
 ) -> io::Result<()> {
@@ -979,9 +985,7 @@ fn render_table_cell<W: Write>(
     }
 
     write!(writer, " ")?;
-    if cell.last_cell_in_row {
-        writeln!(writer, "{}", "│".bright_cyan())?;
-    }
+    writeln!(writer, "{}", "│".bright_cyan())?;
     Ok(())
 }
 
@@ -1220,8 +1224,6 @@ mod tests {
                 })],
                 column: 0,
                 row: 0,
-                last_cell_in_row: false,
-                last_cell_of_in_table: false,
                 position: None,
             }),
             Node::TableCell(mq_markdown::TableCell {
@@ -1231,8 +1233,6 @@ mod tests {
                 })],
                 column: 1,
                 row: 0,
-                last_cell_in_row: true,
-                last_cell_of_in_table: true,
                 position: None,
             }),
         ];
