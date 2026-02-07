@@ -1852,9 +1852,9 @@ checksum = "c4013970217383f67b18aef68f6fb2e8d409bc5755227092d32efb0422ba24b8"
 
 [[package]]
 name = "tree-sitter-mq"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff7386d7a333df800232f19f712f6f025a192b41ead99060acbd7966ee8fa7a4"
+checksum = "ab9d197a4c49ab61f33381c78fb63e6701f0a39e0a68dad1151a7d66c582a376"
 dependencies = [
  "cc",
  "tree-sitter-language",
