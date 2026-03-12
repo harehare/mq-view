@@ -940,9 +940,9 @@ dependencies = [
 
 [[package]]
 name = "mq-markdown"
-version = "0.5.17"
+version = "0.5.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67b949a46d94fb8ec5b6ece62bf178ad33f5e661d886ae59367571780cc497ec"
+checksum = "53d9d081eabd71e1572f9078b084931c2378b4cd7d58d9e45787b9a638081c1c"
 dependencies = [
  "itertools",
  "markdown",
@@ -1546,9 +1546,9 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "smol_str"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f7a918bd2a9951d18ee6e48f076843e8e73a9a5d22cf05bcd4b7a81bdd04e17"
+checksum = "4aaa7368fcf4852a4c2dd92df0cace6a71f2091ca0a23391ce7f3a31833f1523"
 dependencies = [
  "borsh",
  "serde_core",
