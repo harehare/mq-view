@@ -24,7 +24,7 @@ curl -sSL https://raw.githubusercontent.com/harehare/mq-view/refs/heads/main/bin
 
 The installer will:
 - Download the latest mq-view binary for your platform
-- Install it to `~/.mq/bin/`
+- Install it to `~/.local/bin/`
 - Update your shell profile to add mq-view to your PATH
 
 ### Cargo

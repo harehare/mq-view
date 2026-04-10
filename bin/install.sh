@@ -5,8 +5,7 @@ set -e
 # mq-view installation script
 
 readonly MQV_REPO="harehare/mq-view"
-readonly MQV_INSTALL_DIR="$HOME/.mq"
-readonly MQV_BIN_DIR="$MQV_INSTALL_DIR/bin"
+readonly MQV_BIN_DIR="$HOME/.local/bin"
 
 
 # Colors for output
