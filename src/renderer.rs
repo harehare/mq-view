@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::sync::LazyLock;
 use terminal_size::{Height, Width, terminal_size};
+use unicode_width::UnicodeWidthStr;
 
 /// Configuration for rendering markdown
 #[derive(Debug, Clone)]
@@ -20,9 +21,6 @@ impl Default for RenderConfig {
         }
     }
 }
-
-/// Unicode header symbols (①②③④⑤⑥)
-const HEADER_SYMBOLS: &[&str] = &["①", "②", "③", "④", "⑤", "⑥"];
 
 /// Unicode bullet symbols for lists
 const LIST_BULLETS: &[&str] = &["●", "○", "◆", "◇"];
@@ -173,6 +171,133 @@ pub fn render_markdown_to_string(markdown: &Markdown) -> io::Result<String> {
     String::from_utf8(output).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
+/// Visible column width of a string, ignoring ANSI escape sequences
+/// (SGR color codes and OSC 8 hyperlinks) so that box borders and wrapping
+/// stay aligned even when the content contains colored or clickable text.
+/// Visible runs are measured with their real terminal column width (not a
+/// raw `char` count), so wide CJK text and emoji - including multi-codepoint
+/// sequences like an emoji + variation selector - line up correctly too.
+pub(crate) fn visible_width(s: &str) -> usize {
+    let mut width = 0;
+    let mut run = String::new();
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            width += UnicodeWidthStr::width(run.as_str());
+            run.clear();
+            match chars.peek() {
+                Some('[') => {
+                    chars.next();
+                    for c2 in chars.by_ref() {
+                        if c2.is_ascii_alphabetic() {
+                            break;
+                        }
+                    }
+                }
+                Some(']') => {
+                    chars.next();
+                    while let Some(c2) = chars.next() {
+                        if c2 == '\x07' {
+                            break;
+                        }
+                        if c2 == '\x1b' && chars.peek() == Some(&'\\') {
+                            chars.next();
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            }
+            continue;
+        }
+        run.push(c);
+    }
+    width += UnicodeWidthStr::width(run.as_str());
+    width
+}
+
+/// Greedily word-wrap `s` so each line's visible width fits within `width`
+/// columns (ANSI escapes don't count toward the width).
+fn wrap_visible(s: &str, width: usize) -> Vec<String> {
+    if width == 0 || s.trim().is_empty() {
+        return vec![s.to_string()];
+    }
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    let mut current_width = 0;
+
+    for word in s.split(' ').filter(|w| !w.is_empty()) {
+        let word_width = visible_width(word);
+        if current.is_empty() {
+            current = word.to_string();
+            current_width = word_width;
+        } else if current_width + 1 + word_width <= width {
+            current.push(' ');
+            current.push_str(word);
+            current_width += 1 + word_width;
+        } else {
+            lines.push(current);
+            current = word.to_string();
+            current_width = word_width;
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+/// Render `lines` inside a bordered box. Lines are never wrapped (so
+/// syntax-highlighted code keeps its original structure); a line wider than
+/// the box just overflows past the right border instead of being cut.
+fn box_inner_width(header_width: usize) -> usize {
+    WIDTH.saturating_sub(4).max(header_width + 2)
+}
+
+fn render_boxed_lines<W: Write>(
+    writer: &mut W,
+    header: Option<&str>,
+    color: colored::Color,
+    lines: &[String],
+) -> io::Result<()> {
+    let header_width = header.map(visible_width).unwrap_or(0);
+    let inner_width = box_inner_width(header_width);
+    let border = "─".repeat(inner_width + 2);
+
+    let top = match header {
+        Some(h) if !h.is_empty() => format!(
+            "┌─ {} {}┐",
+            h,
+            "─".repeat(inner_width.saturating_sub(header_width + 1))
+        ),
+        _ => format!("┌{}┐", border),
+    };
+    writeln!(writer, "{}", top.color(color))?;
+
+    for line in lines {
+        let w = visible_width(line);
+        if w <= inner_width {
+            let pad = inner_width - w;
+            writeln!(
+                writer,
+                "{} {}{} {}",
+                "│".color(color),
+                line,
+                " ".repeat(pad),
+                "│".color(color)
+            )?;
+        } else {
+            writeln!(writer, "{} {}", "│".color(color), line)?;
+        }
+    }
+
+    writeln!(writer, "{}", format!("└{}┘", border).color(color))?;
+    Ok(())
+}
+
 fn detect_callout(text: &str) -> Option<&'static Callout> {
     let trimmed = text.trim();
     if trimmed.starts_with("[!")
@@ -212,14 +337,16 @@ fn render_node_inline<W: Write>(
                 writeln!(writer)?;
             }
 
-            let symbol = HEADER_SYMBOLS
-                .get((heading.depth - 1) as usize)
-                .unwrap_or(&"⑥");
+            // Repeat the marker once per heading level (▶, ▶▶, ▶▶▶, ...) so
+            // depth stays legible even in fonts that render circled digits
+            // (①②③) too small to read at a glance.
+            let symbol = "▶".repeat(heading.depth.clamp(1, 6) as usize);
 
             let text = render_inline_content(&heading.values);
 
             if config.header_full_width_highlight {
-                let padding = WIDTH.saturating_sub(text.chars().count() + 3);
+                let padding =
+                    WIDTH.saturating_sub(visible_width(&text) + visible_width(&symbol) + 2);
                 let line = format!("{}{}", text, " ".repeat(padding));
 
                 // Full-width background highlighting
@@ -329,19 +456,38 @@ fn render_node_inline<W: Write>(
         }
 
         Node::Code(code) => {
-            write!(writer, "{}", "\n```".bright_black())?;
-            if let Some(lang) = &code.lang {
-                write!(writer, "{}", lang.bright_black())?;
+            let is_mermaid = code
+                .lang
+                .as_deref()
+                .is_some_and(|lang| lang.eq_ignore_ascii_case("mermaid"));
+
+            let mermaid_diagram = is_mermaid
+                .then(|| crate::mermaid::render(&code.value, *WIDTH))
+                .flatten();
+
+            if let Some(diagram) = mermaid_diagram {
+                writeln!(writer)?;
+                write!(writer, "{}", diagram)?;
+                writeln!(writer)?;
+            } else {
+                // Apply syntax highlighting if language is specified
+                let highlighted = highlighter.highlight(&code.value, code.lang.as_deref());
+                let lines: Vec<String> = highlighted
+                    .strip_suffix('\n')
+                    .unwrap_or(&highlighted)
+                    .split('\n')
+                    .map(str::to_string)
+                    .collect();
+
+                writeln!(writer)?;
+                render_boxed_lines(
+                    writer,
+                    code.lang.as_deref(),
+                    colored::Color::BrightBlack,
+                    &lines,
+                )?;
+                writeln!(writer)?;
             }
-            writeln!(writer)?;
-
-            // Apply syntax highlighting if language is specified
-            let highlighted = highlighter.highlight(&code.value, code.lang.as_deref());
-            write!(writer, "{}", highlighted)?;
-
-            writeln!(writer)?;
-            writeln!(writer, "{}", "```".bright_black())?;
-            writeln!(writer)?;
         }
 
         Node::CodeInline(code) => {
@@ -434,11 +580,9 @@ fn render_node_inline<W: Write>(
                                 }
                             }
                         }
-                        Node::Text(text) => {
-                            if detect_callout(&text.value).is_some() {
-                                found_callout = true;
-                                break;
-                            }
+                        Node::Text(text) if detect_callout(&text.value).is_some() => {
+                            found_callout = true;
+                            break;
                         }
                         _ => {}
                     }
@@ -450,7 +594,7 @@ fn render_node_inline<W: Write>(
             };
 
             if is_callout {
-                render_callout_blockquote(blockquote, depth, highlighter, config, writer)?;
+                render_callout_blockquote(blockquote, writer)?;
             } else {
                 render_regular_blockquote(blockquote, depth, highlighter, config, writer)?;
             }
@@ -559,121 +703,90 @@ fn render_list<W: Write>(
     Ok(())
 }
 
+/// mq-markdown doesn't consistently wrap inline blockquote content in a
+/// `Fragment`: a single-line callout comes through as flat `Text`/`Link`/...
+/// nodes directly under `Blockquote`, while other inputs nest them inside a
+/// `Fragment`. Flatten one level so callers can treat both shapes the same.
+fn flatten_inline(values: &[Node]) -> Vec<&Node> {
+    let mut out = Vec::new();
+    for value in values {
+        if let Node::Fragment(para) = value {
+            out.extend(para.values.iter());
+        } else {
+            out.push(value);
+        }
+    }
+    out
+}
+
+/// Render a single inline node's textual content for use inside a callout
+/// box (where everything gets re-wrapped to the box width, so embedded
+/// line breaks from the original markdown source are normalized to spaces).
+fn inline_node_to_text(node: &Node) -> String {
+    match node {
+        Node::Text(text) => text.value.replace('\n', " "),
+        Node::Link(link) => {
+            let text = render_inline_content(&link.values);
+            let url = link.url.as_str();
+            if text.trim().is_empty() {
+                format!(" 🔗 {}", make_clickable_link(url, url))
+            } else {
+                format!(" 🔗 {}", make_clickable_link(url, &text))
+            }
+        }
+        Node::Break(_) => "\n".to_string(),
+        other => render_inline_content(std::slice::from_ref(other)),
+    }
+}
+
 fn render_callout_blockquote<W: Write>(
     blockquote: &mq_markdown::Blockquote,
-    _depth: usize,
-    highlighter: &mut SyntaxHighlighter,
-    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
-    // Find the callout type from any text node in the blockquote
-    let mut callout_info = None;
-    let mut callout_text = String::new();
+    let inline_nodes = flatten_inline(&blockquote.values);
 
-    for value in &blockquote.values {
-        match value {
-            Node::Fragment(para) => {
-                for child in &para.values {
-                    if let Node::Text(text) = child
-                        && let Some(callout) = detect_callout(&text.value)
-                    {
-                        callout_info = Some(callout);
-                        // Extract content after the callout marker
-                        if let Some(end) = text.value.find(']') {
-                            callout_text = text.value[end + 1..].trim_start().to_string();
-                        }
-                        break;
-                    }
-                }
-            }
-            Node::Text(text) => {
-                if let Some(callout) = detect_callout(&text.value) {
-                    callout_info = Some(callout);
-                    if let Some(end) = text.value.find(']') {
-                        callout_text = text.value[end + 1..].trim_start().to_string();
-                    }
-                    break;
-                }
-            }
-            _ => {}
-        }
-        if callout_info.is_some() {
-            break;
-        }
+    // Find the marker node and the callout type it declares.
+    let marker_idx = inline_nodes
+        .iter()
+        .position(|n| matches!(n, Node::Text(t) if detect_callout(&t.value).is_some()));
+    let Some(marker_idx) = marker_idx else {
+        return Ok(());
+    };
+    let Node::Text(marker_text) = inline_nodes[marker_idx] else {
+        unreachable!()
+    };
+    let Some(callout) = detect_callout(&marker_text.value) else {
+        unreachable!()
+    };
+
+    // Build one continuous string for the body: the part of the marker text
+    // after `]`, followed by every later inline node's text. Soft line
+    // breaks inside source text are normalized to spaces; explicit `Break`
+    // nodes become paragraph separators (kept as `\n`) for re-wrapping.
+    let mut body = String::new();
+    if let Some(end) = marker_text.value.find(']') {
+        body.push_str(&marker_text.value[end + 1..].replace('\n', " "));
+    }
+    for node in &inline_nodes[marker_idx + 1..] {
+        body.push_str(&inline_node_to_text(node));
     }
 
-    if let Some(callout) = callout_info {
-        // Print the callout header
-        let header = format!("{} {}", callout.icon, callout.name)
-            .color(callout.color)
-            .bold();
-        writeln!(writer, "┌─ {}", header)?;
-
-        // Print the content
-        if !callout_text.is_empty() {
-            writeln!(writer, "│ {}", callout_text)?;
+    let mut content_lines: Vec<String> = Vec::new();
+    for paragraph in body.split('\n') {
+        if paragraph.trim().is_empty() {
+            continue;
         }
-
-        // Print remaining content from blockquote
-        let mut found_callout_marker = false;
-        for value in &blockquote.values {
-            match value {
-                Node::Fragment(para) => {
-                    let mut line_content = String::new();
-                    for child in &para.values {
-                        match child {
-                            Node::Text(text) => {
-                                if !found_callout_marker && detect_callout(&text.value).is_some() {
-                                    found_callout_marker = true;
-                                    // Skip the callout marker part
-                                    if let Some(end) = text.value.find(']') {
-                                        let remaining = text.value[end + 1..].trim_start();
-                                        if !remaining.is_empty() {
-                                            line_content.push_str(remaining);
-                                        }
-                                    }
-                                } else {
-                                    line_content.push_str(&text.value);
-                                }
-                            }
-                            Node::Link(link) => {
-                                let text = render_inline_content(&link.values);
-                                let url = link.url.as_str();
-                                if text.trim().is_empty() {
-                                    line_content.push_str(&format!(
-                                        " 🔗 {}",
-                                        make_clickable_link(url, url)
-                                    ));
-                                } else {
-                                    line_content.push_str(&format!(
-                                        " 🔗 {}",
-                                        make_clickable_link(url, &text)
-                                    ));
-                                }
-                            }
-                            _ => {
-                                // Handle all other inline formatting
-                                line_content
-                                    .push_str(&render_inline_content(std::slice::from_ref(child)));
-                            }
-                        }
-                    }
-                    if !line_content.trim().is_empty() && found_callout_marker {
-                        writeln!(writer, "│ {}", line_content)?;
-                    }
-                }
-                _ => {
-                    if found_callout_marker {
-                        write!(writer, "│ ")?;
-                        render_node_inline(value, 0, false, highlighter, config, writer)?;
-                    }
-                }
-            }
-        }
-
-        writeln!(writer, "└─")?;
+        content_lines.push(paragraph.trim().to_string());
     }
-    Ok(())
+
+    let header_text = format!("{} {}", callout.icon, callout.name);
+    let inner_width = box_inner_width(visible_width(&header_text));
+    let wrapped_lines: Vec<String> = content_lines
+        .iter()
+        .flat_map(|line| wrap_visible(line, inner_width))
+        .collect();
+
+    render_boxed_lines(writer, Some(&header_text), callout.color, &wrapped_lines)
 }
 
 fn render_regular_blockquote<W: Write>(
@@ -782,7 +895,7 @@ fn render_table<W: Write>(
                 }
 
                 // Pad with spaces to align columns
-                let content_width = content.chars().count();
+                let content_width = visible_width(&content);
                 if content_width < width {
                     write!(writer, "{}", " ".repeat(width - content_width))?;
                 }
@@ -841,7 +954,7 @@ fn calculate_column_widths(nodes: &[Node]) -> Vec<usize> {
                 for (col_idx, cell_node) in row.values.iter().enumerate() {
                     if let Node::TableCell(cell) = cell_node {
                         let content = render_inline_content(&cell.values);
-                        let width = content.chars().count();
+                        let width = visible_width(&content);
 
                         if col_idx >= column_widths.len() {
                             column_widths.resize(col_idx + 1, 0);
@@ -852,7 +965,7 @@ fn calculate_column_widths(nodes: &[Node]) -> Vec<usize> {
             }
             Node::TableCell(cell) => {
                 let content = render_inline_content(&cell.values);
-                let width = content.chars().count();
+                let width = visible_width(&content);
 
                 if cell.column >= column_widths.len() {
                     column_widths.resize(cell.column + 1, 0);
@@ -949,7 +1062,7 @@ fn render_table_row<W: Write>(
             }
 
             // Pad with spaces to align columns
-            let content_width = content.chars().count();
+            let content_width = visible_width(&content);
             if content_width < width {
                 write!(writer, "{}", " ".repeat(width - content_width))?;
             }
@@ -979,7 +1092,7 @@ fn render_table_cell<W: Write>(
     }
 
     // Pad with spaces to align columns
-    let content_width = content.chars().count();
+    let content_width = visible_width(&content);
     if content_width < width {
         write!(writer, "{}", " ".repeat(width - content_width))?;
     }
@@ -1042,6 +1155,19 @@ mod tests {
         assert!(result.contains("Heading 4"));
         assert!(result.contains("Heading 5"));
         assert!(result.contains("Heading 6"));
+    }
+
+    #[test]
+    fn test_heading_full_width_highlight_padding_accounts_for_symbol_and_links() {
+        // Regression test: the full-width background bar must reach exactly
+        // `WIDTH` visible columns regardless of heading depth (the "▶"
+        // marker is repeated per level, so its width isn't always 1) and
+        // regardless of embedded OSC 8 hyperlink escapes inflating the raw
+        // string length without affecting what's actually printed.
+        let markdown: Markdown = "## [Linked Heading](https://example.com)".parse().unwrap();
+        let result = render_markdown_to_string(&markdown).unwrap();
+        let line = result.lines().find(|l| !l.trim().is_empty()).unwrap();
+        assert_eq!(visible_width(line), *WIDTH);
     }
 
     #[test]
