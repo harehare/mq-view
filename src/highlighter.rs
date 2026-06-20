@@ -124,6 +124,61 @@ impl SyntaxHighlighter {
                 tree_sitter_elixir::LANGUAGE.into(),
                 tree_sitter_elixir::HIGHLIGHTS_QUERY,
             ),
+            #[cfg(feature = "lang-toml")]
+            "toml" => (
+                tree_sitter_toml_ng::LANGUAGE.into(),
+                tree_sitter_toml_ng::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-clojure")]
+            "clojure" | "clj" => (
+                tree_sitter_clojure::LANGUAGE.into(),
+                include_str!("../queries/clojure_highlights.scm"),
+            ),
+            #[cfg(feature = "lang-yaml")]
+            "yaml" | "yml" => (
+                tree_sitter_yaml::LANGUAGE.into(),
+                tree_sitter_yaml::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-ruby")]
+            "ruby" | "rb" => (
+                tree_sitter_ruby::LANGUAGE.into(),
+                tree_sitter_ruby::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-php")]
+            "php" => (
+                tree_sitter_php::LANGUAGE_PHP.into(),
+                tree_sitter_php::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-lua")]
+            "lua" => (
+                tree_sitter_lua::LANGUAGE.into(),
+                tree_sitter_lua::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-kotlin")]
+            "kotlin" | "kt" | "kts" => (
+                tree_sitter_kotlin_ng::LANGUAGE.into(),
+                include_str!("../queries/kotlin_highlights.scm"),
+            ),
+            #[cfg(feature = "lang-scala")]
+            "scala" => (
+                tree_sitter_scala::LANGUAGE.into(),
+                tree_sitter_scala::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-make")]
+            "make" | "makefile" => (
+                tree_sitter_make::LANGUAGE.into(),
+                tree_sitter_make::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-sql")]
+            "sql" => (
+                tree_sitter_sequel::LANGUAGE.into(),
+                tree_sitter_sequel::HIGHLIGHTS_QUERY,
+            ),
+            #[cfg(feature = "lang-dockerfile")]
+            "dockerfile" | "docker" => (
+                tree_sitter_containerfile::LANGUAGE.into(),
+                tree_sitter_containerfile::HIGHLIGHTS_QUERY,
+            ),
             _ => return None,
         };
 
@@ -303,6 +358,50 @@ mod tests {
     #[cfg_attr(feature = "lang-mq", case::mq("mq", r#"fn(): "Hello, world!""#))]
     #[cfg_attr(feature = "lang-mq", case::bool("mq", r#"fn(): true"#))]
     #[cfg_attr(feature = "lang-mq", case::number("mq", r#"fn(): 42"#))]
+    #[cfg_attr(
+        feature = "lang-toml",
+        case::toml("toml", "[package]\nname = \"hello\"\nversion = \"1.0.0\"")
+    )]
+    #[cfg_attr(
+        feature = "lang-clojure",
+        case::clojure("clojure", r#"(defn main [] (println "Hello, world!"))"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-yaml",
+        case::yaml("yaml", "name: hello\nversion: 1.0.0")
+    )]
+    #[cfg_attr(
+        feature = "lang-ruby",
+        case::ruby("ruby", r#"def main; puts "Hello, world!"; end"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-php",
+        case::php("php", r#"<?php function main() { echo "Hello, world!"; }"#)
+    )]
+    #[cfg_attr(feature = "lang-lua", case::lua("lua", r#"print("Hello, world!")"#))]
+    #[cfg_attr(
+        feature = "lang-kotlin",
+        case::kotlin("kotlin", r#"fun main() { println("Hello, world!") }"#)
+    )]
+    #[cfg_attr(
+        feature = "lang-scala",
+        case::scala(
+            "scala",
+            r#"object Main { def main(args: Array[String]): Unit = println("Hello, world!") }"#
+        )
+    )]
+    #[cfg_attr(
+        feature = "lang-make",
+        case::make("make", "all:\n\techo \"Hello, world!\"")
+    )]
+    #[cfg_attr(
+        feature = "lang-sql",
+        case::sql("sql", "SELECT * FROM users WHERE id = 1;")
+    )]
+    #[cfg_attr(
+        feature = "lang-dockerfile",
+        case::dockerfile("dockerfile", "FROM rust:latest\nRUN cargo build")
+    )]
     fn test_highlighting_for_supported_languages(#[case] lang: &str, #[case] code: &str) {
         let mut highlighter = SyntaxHighlighter::new();
         let result = highlighter.highlight(code, Some(lang));
