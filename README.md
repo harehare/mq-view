@@ -9,9 +9,10 @@ Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for 
 
 ## Features
 
-- 🎨 **Syntax Highlighting**: Tree-sitter powered syntax highlighting for 13+ programming languages
-- 📝 **Rich Markdown Rendering**: Support for headers, lists, code blocks, links, images, and more
-- 🔔 **GitHub-style Callouts**: NOTE, TIP, IMPORTANT, WARNING, CAUTION
+- 🎨 **Syntax Highlighting**: Tree-sitter powered syntax highlighting for 29+ programming and config languages
+- 📝 **Rich Markdown Rendering**: Support for headers, lists, code blocks, links, images, tables, and more
+- 🧜 **Mermaid Diagrams**: Best-effort ASCII-art rendering of simple `graph`/`flowchart` blocks
+- 🔔 **GitHub-style Callouts**: NOTE, TIP, IMPORTANT, WARNING, CAUTION, rendered as wrapped, bordered boxes
 - 🔗 **Clickable Links**: Terminal hyperlinks using OSC 8
 
 ## Installation
@@ -43,11 +44,22 @@ cargo install --git https://github.com/harehare/mq-view.git
 
 ## Supported Languages
 
-- Rust, JavaScript, TypeScript (+ TSX)
-- Python, Go, Java
-- C, C++
-- HTML, CSS, JSON
-- Bash/Shell
+Enabled by default:
+
+- Rust, JavaScript, TypeScript (+ TSX), Python
+- HTML, CSS, JSON, YAML, TOML
+- Bash/Shell, Ruby, SQL
+- Elixir, mq
+
+Available with the `all-languages` feature:
+
+- Go, Java, Kotlin, Scala
+- C, C++, Swift
+- PHP, Lua, Clojure, Haskell, OCaml, Elm
+- Dockerfile, Makefile
+
+See `Cargo.toml` for the full list of `lang-*` feature flags if you only need
+one or two extra languages instead of all of them.
 
 ## Usage
 
@@ -64,6 +76,23 @@ Pipe markdown content:
 ```bash
 echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 ```
+
+### Mermaid Diagrams
+
+Fenced code blocks tagged ` ```mermaid ` are rendered as ASCII art instead of
+plain text when the diagram is a simple `graph`/`flowchart`:
+
+```mermaid
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great success]
+    B -->|No| D[Debug it]
+```
+
+This only understands a small subset of mermaid flowchart syntax (nodes,
+shapes, and edges with optional labels). Other diagram types (sequence,
+class, gantt, ...) and advanced flowchart syntax fall back to a regular,
+syntax-highlighted code block.
 
 ## License
 
