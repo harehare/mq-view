@@ -4,39 +4,36 @@
 
 `mq` is a jq-like command-line tool for Markdown processing.
 
-## Features
-
-### 1. Filter Headers
-
-You can filter headers by level and content.
-
-### 2. Extract Content
+> [!TIP]
+> Pipe any Markdown file into `mq-view` to get syntax highlighting,
+> callouts, tables, and mermaid diagrams right in your terminal.
 
 ## Code Examples
 
-```mq
-def main():
-    print("Hello, mq!")
-end
+```rust
+fn main() {
+    println!("Hello, mq!");
+}
 ```
 
-## Notes
+## How It Works
 
-- Simple to use
-- Written in Rust
-- Fast and efficient
+```mermaid
+graph LR
+    A[Markdown] --> B[mq]
+    B --> C[mq-view]
+```
 
 ## Tables
-
-mq can also process tables in markdown files:
 
 | Feature     | Description              | Status |
 | ----------- | ------------------------ | ------ |
 | Headers     | Filter headers by level  | ✅      |
-| Content     | Extract specific content | ✅      |
+| Callouts    | NOTE, TIP, WARNING, ...  | ✅      |
 | Tables      | Process markdown tables  | ✅      |
-| Code blocks | Handle code snippets     | ✅      |
+| Mermaid     | Render simple flowcharts | ✅      |
 
-You can query and transform table data just like other markdown elements.
+> [!WARNING]
+> Always double-check generated queries before running them on real data.
 
 Try mq today!
