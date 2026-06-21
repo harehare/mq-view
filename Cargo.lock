@@ -940,9 +940,9 @@ dependencies = [
 
 [[package]]
 name = "mq-markdown"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "160f55c054bc0739748e6d7cc7cefd123d9c9e6147dd5213b66918b98585aca4"
+checksum = "acc763f967db0cc37f0ac31ee8d3f24ab769b45e6fb1c87af972385b510a0eb6"
 dependencies = [
  "itertools",
  "markdown",
@@ -953,7 +953,7 @@ dependencies = [
 
 [[package]]
 name = "mq-view"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "clap",
  "colored",
@@ -1925,9 +1925,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-mq"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d710f61aebbd11761f1a30e5d3efcf16fae05e2687b7b74b13beab3a68637178"
+checksum = "86d4727e1a49ed0d1db77ece5f8463f322c537bfd2f6d0150ce524bb7d05328b"
 dependencies = [
  "cc",
  "tree-sitter-language",
