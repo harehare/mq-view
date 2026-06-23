@@ -87,7 +87,7 @@ lang-yaml = ["dep:tree-sitter-yaml"]
 clap = {version = "4.6.1", features = ["derive"]}
 colored = "3.1.1"
 image = "0.25"
-itertools = "0.14.0"
+itertools = "0.15.0"
 miette = {version = "7.6.0", features = ["fancy"]}
 mq-markdown = "0.6.2"
 terminal_size = "0.4.4"
