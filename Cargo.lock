@@ -1210,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "mq-view"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "ansi-to-tui",
  "clap",
