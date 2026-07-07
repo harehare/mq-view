@@ -577,7 +577,8 @@ fn event_loop(
 ) -> io::Result<()> {
     loop {
         let (_, term_height) = crossterm_terminal::size()?;
-        let content_height = term_height.saturating_sub(1).max(1) as usize;
+        // Title bar (1 row) + footer (1 row) surround the scrollable body.
+        let content_height = term_height.saturating_sub(2).max(1) as usize;
 
         if let Some(rx) = watch_rx
             && rx.try_iter().last().is_some()
