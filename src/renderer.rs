@@ -12,12 +12,18 @@ use unicode_width::UnicodeWidthStr;
 pub struct RenderConfig {
     /// Enable full-width background highlighting for headers
     pub header_full_width_highlight: bool,
+    /// Draw local images directly to the terminal via `viuer`. This writes
+    /// straight to the real stdout, bypassing the writer passed to the
+    /// render functions, so it must be disabled by callers (like the pager)
+    /// that manage their own alternate-screen terminal buffer.
+    pub inline_images: bool,
 }
 
 impl Default for RenderConfig {
     fn default() -> Self {
         Self {
             header_full_width_highlight: true,
+            inline_images: true,
         }
     }
 }
@@ -169,6 +175,68 @@ pub fn render_markdown_to_string(markdown: &Markdown) -> io::Result<String> {
     let mut output = Vec::new();
     render_markdown(markdown, &mut output)?;
     String::from_utf8(output).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+/// A heading found while rendering, with the rendered (post-wrap) line
+/// number it starts on so a viewer can jump straight to it.
+#[derive(Debug, Clone)]
+pub(crate) struct HeadingEntry {
+    pub line: usize,
+    pub depth: u8,
+    pub title: String,
+}
+
+/// Same as [`render_markdown_with_config`], but also returns the outline of
+/// headings alongside the rendered line each one lands on. Used by the
+/// pager to build a jump-to-heading sidebar.
+pub(crate) fn render_markdown_with_outline(
+    markdown: &Markdown,
+    config: &RenderConfig,
+) -> io::Result<(String, Vec<HeadingEntry>)> {
+    let mut highlighter = SyntaxHighlighter::new();
+    let mut output: Vec<u8> = Vec::new();
+    let mut headings = Vec::new();
+    let mut i = 0;
+    let len = markdown.nodes.len();
+
+    while i < len {
+        let node = &markdown.nodes[i];
+        if let Node::Heading(heading) = node {
+            // Headings always start with a blank separator line (see
+            // render_node_inline), so the title itself lands one line later.
+            let line = bytecount_newlines(&output) + 1;
+            headings.push(HeadingEntry {
+                line,
+                depth: heading.depth,
+                title: render_inline_content(&heading.values),
+            });
+        }
+
+        if matches!(node, Node::TableCell(_)) {
+            let table_nodes: Vec<&Node> = markdown.nodes[i..]
+                .iter()
+                .take_while(|n| {
+                    matches!(
+                        n,
+                        Node::TableCell(_) | Node::TableAlign(_) | Node::TableRow(_)
+                    )
+                })
+                .collect();
+            render_table(&table_nodes, &mut highlighter, &mut output)?;
+            i += table_nodes.len();
+        } else {
+            render_node(node, 0, &mut highlighter, config, &mut output)?;
+            i += 1;
+        }
+    }
+
+    let rendered =
+        String::from_utf8(output).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    Ok((rendered, headings))
+}
+
+fn bytecount_newlines(buf: &[u8]) -> usize {
+    buf.iter().filter(|&&b| b == b'\n').count()
 }
 
 /// Visible column width of a string, ignoring ANSI escape sequences
@@ -533,7 +601,9 @@ fn render_node_inline<W: Write>(
             let alt = image.alt.as_str();
             let url = image.url.as_str();
 
-            let _ = render_image_to_terminal(url);
+            if config.inline_images {
+                let _ = render_image_to_terminal(url);
+            }
 
             // Always show the text description as well
             if alt.trim().is_empty() {

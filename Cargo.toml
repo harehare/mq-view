@@ -84,12 +84,16 @@ lang-typescript = ["dep:tree-sitter-typescript"]
 lang-yaml = ["dep:tree-sitter-yaml"]
 
 [dependencies]
+ansi-to-tui = "8.0.1"
 clap = {version = "4.6.1", features = ["derive"]}
 colored = "3.1.1"
+crossterm = {version = "0.29.0", features = ["use-dev-tty"]}
 image = "0.25"
 itertools = "0.15.0"
 miette = {version = "7.6.0", features = ["fancy"]}
 mq-markdown = "0.6.3"
+notify = {version = "8.2.0", default-features = false, features = ["macos_fsevent"]}
+ratatui = {version = "0.30.2", default-features = false, features = ["crossterm", "std"]}
 terminal_size = "0.4.4"
 tree-sitter = "0.25.10"
 tree-sitter-bash = {version = "0.25", optional = true}
