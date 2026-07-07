@@ -1,7 +1,7 @@
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use mq_markdown::Markdown;
-use mq_view::{RenderConfig, render_markdown_with_config};
+use mq_view::{RenderConfig, render_markdown_with_config, run_pager};
 use std::fs;
 use std::io::{self, BufWriter, Write};
 use std::io::{IsTerminal, Read};
@@ -17,6 +17,10 @@ pub struct Args {
     #[arg(short = 'H', long = "no-header-highlight")]
     no_header_highlight: bool,
 
+    /// Open an interactive pager (scroll, heading outline, search, auto-reload on file changes)
+    #[arg(short = 'p', long = "pager")]
+    pager: bool,
+
     /// Markdown file to view
     file: Option<PathBuf>,
 }
@@ -24,8 +28,8 @@ pub struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
     let content = if io::stdin().is_terminal() {
-        if let Some(file) = args.file {
-            fs::read_to_string(&file).into_diagnostic()?
+        if let Some(file) = &args.file {
+            fs::read_to_string(file).into_diagnostic()?
         } else {
             return Err(miette::miette!("No input file specified"));
         }
@@ -34,12 +38,17 @@ fn main() -> Result<()> {
         io::stdin().read_to_string(&mut buffer).into_diagnostic()?;
         buffer
     };
-    let markdown: Markdown = content.parse().map_err(|e| miette::miette!("{}", e))?;
 
     let config = RenderConfig {
         header_full_width_highlight: !args.no_header_highlight,
+        ..RenderConfig::default()
     };
 
+    if args.pager {
+        return run_pager(&content, args.file, &config).into_diagnostic();
+    }
+
+    let markdown: Markdown = content.parse().map_err(|e| miette::miette!("{}", e))?;
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
     render_markdown_with_config(&markdown, &mut writer, &config).into_diagnostic()?;

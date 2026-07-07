@@ -16,9 +16,11 @@
 
 mod highlighter;
 mod mermaid;
+mod pager;
 mod renderer;
 
 pub use highlighter::SyntaxHighlighter;
+pub use pager::run_pager;
 pub use renderer::{
     RenderConfig, render_markdown, render_markdown_to_string, render_markdown_with_config,
 };

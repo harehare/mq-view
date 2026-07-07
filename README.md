@@ -14,6 +14,7 @@ Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for 
 - 🧜 **Mermaid Diagrams**: Best-effort ASCII-art rendering of simple `graph`/`flowchart` blocks
 - 🔔 **GitHub-style Callouts**: NOTE, TIP, IMPORTANT, WARNING, CAUTION, rendered as wrapped, bordered boxes
 - 🔗 **Clickable Links**: Terminal hyperlinks using OSC 8
+- 📖 **Pager Mode**: Interactive full-screen viewer with scrolling, a heading outline, search, and auto-reload on file changes
 
 ## Installation
 
@@ -76,6 +77,35 @@ Pipe markdown content:
 ```bash
 echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 ```
+
+### Pager Mode
+
+Open an interactive, full-screen viewer with `--pager` (`-p`):
+
+```bash
+mq-view --pager README.md
+```
+
+It also works with piped content, but without a file to watch there's
+nothing to auto-reload:
+
+```bash
+cat report.md | mq-view --pager
+```
+
+| Key | Action |
+| --- | --- |
+| `j` / `k`, `↓` / `↑` | Scroll down / up |
+| `Space` / `PageDown`, `PageUp` | Scroll a page down / up |
+| `Ctrl-d` / `Ctrl-u` | Scroll half a page down / up |
+| `g` / `G` | Jump to top / bottom |
+| `Tab` | Toggle the heading outline; `j`/`k` to move, `Enter` to jump |
+| `/` | Search; `Enter` to confirm, `Esc` to cancel |
+| `n` / `N` | Jump to the next / previous search match |
+| `q` / `Esc` | Quit |
+
+When viewing a file (not piped input), the pager watches it and
+automatically re-renders whenever it changes on disk.
 
 ### Mermaid Diagrams
 
