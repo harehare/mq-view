@@ -9,7 +9,7 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use ratatui::Frame;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{
     self as crossterm_terminal, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
@@ -330,18 +330,16 @@ fn handle_key(app: &mut App, key: KeyEvent, content_height: usize) -> bool {
         KeyCode::Char('q') | KeyCode::Esc => return true,
         KeyCode::Char('j') | KeyCode::Down => scroll_by(app, 1, content_height),
         KeyCode::Char('k') | KeyCode::Up => scroll_by(app, -1, content_height),
-        KeyCode::Char(' ') | KeyCode::PageDown => {
+        KeyCode::Char(' ') | KeyCode::PageDown | KeyCode::Char('f') => {
             scroll_by(app, content_height as isize, content_height)
         }
-        KeyCode::PageUp => scroll_by(app, -(content_height as isize), content_height),
-        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            scroll_by(app, (content_height / 2) as isize, content_height)
+        KeyCode::PageUp | KeyCode::Char('b') => {
+            scroll_by(app, -(content_height as isize), content_height)
         }
-        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            scroll_by(app, -((content_height as isize) / 2), content_height)
-        }
-        KeyCode::Char('g') => app.scroll = 0,
-        KeyCode::Char('G') => app.scroll = max_scroll(&app.doc, content_height),
+        KeyCode::Char('d') => scroll_by(app, (content_height / 2) as isize, content_height),
+        KeyCode::Char('u') => scroll_by(app, -((content_height as isize) / 2), content_height),
+        KeyCode::Char('g') | KeyCode::Home => app.scroll = 0,
+        KeyCode::Char('G') | KeyCode::End => app.scroll = max_scroll(&app.doc, content_height),
         KeyCode::Tab => {
             app.show_outline = true;
             app.outline_state.select(nearest_heading_index(app));
@@ -475,7 +473,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, content_height: usize) 
                     .split(area);
                 frame.render_widget(
                     Paragraph::new(
-                        " q:quit  j/k:scroll  Tab:outline  /:search  n/N:next/prev match",
+                        " q:quit  j/k:scroll  f/b/d/u:page  g/G:top/bottom  Tab:outline  /:search  n/N:next/prev match",
                     )
                     .style(Style::default().fg(Color::DarkGray)),
                     cols[0],

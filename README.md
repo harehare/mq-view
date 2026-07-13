@@ -96,9 +96,9 @@ cat report.md | mq-view --pager
 | Key | Action |
 | --- | --- |
 | `j` / `k`, `↓` / `↑` | Scroll down / up |
-| `Space` / `PageDown`, `PageUp` | Scroll a page down / up |
-| `Ctrl-d` / `Ctrl-u` | Scroll half a page down / up |
-| `g` / `G` | Jump to top / bottom |
+| `Space` / `PageDown` / `f`, `PageUp` / `b` | Scroll a page down / up |
+| `d` / `u` (with or without `Ctrl`) | Scroll half a page down / up |
+| `g` / `Home`, `G` / `End` | Jump to top / bottom |
 | `Tab` | Toggle the heading outline; `j`/`k` to move, `Enter` to jump |
 | `/` | Search; `Enter` to confirm, `Esc` to cancel |
 | `n` / `N` | Jump to the next / previous search match |
