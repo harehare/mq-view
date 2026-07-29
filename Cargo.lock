@@ -2464,9 +2464,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-mq"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86d4727e1a49ed0d1db77ece5f8463f322c537bfd2f6d0150ce524bb7d05328b"
+checksum = "a1865f4db9401e0a15b2055d099ae8bb71e891f1d689508e6ac002368e3c91d0"
 dependencies = [
  "cc",
  "tree-sitter-language",
