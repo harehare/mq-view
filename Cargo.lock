@@ -1197,9 +1197,9 @@ dependencies = [
 
 [[package]]
 name = "mq-markdown"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36f445b6b5250ccc6dd9a95552053ede6862dfe62b8e3451f0c81570d8279ec1"
+checksum = "98556f6da5fee84c268b156bfceda2e48f1063bff2956c1daab7074d0f7500c6"
 dependencies = [
  "itertools 0.15.0",
  "markdown",
@@ -1211,7 +1211,7 @@ dependencies = [
 
 [[package]]
 name = "mq-view"
-version = "0.1.21"
+version = "0.1.22"
 dependencies = [
  "ansi-to-tui",
  "clap",
