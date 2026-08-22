@@ -200,6 +200,7 @@ struct App {
     status: Option<Status>,
     path: Option<PathBuf>,
     title: String,
+    mq_query: Option<String>,
 }
 
 fn max_scroll(doc: &Document, content_height: usize) -> usize {
@@ -602,15 +603,22 @@ fn reload(app: &mut App, config: &RenderConfig, content_height: usize) {
     let Some(path) = app.path.clone() else {
         return;
     };
-    match std::fs::read_to_string(&path).map(|content| Document::load(&content, config)) {
-        Ok(Ok(doc)) => {
+    let result = std::fs::read_to_string(&path)
+        .map_err(|e| e.to_string())
+        .and_then(|content| match &app.mq_query {
+            Some(query) => crate::apply_query(&content, query).map_err(|e| e.to_string()),
+            None => Ok(content),
+        })
+        .and_then(|content| Document::load(&content, config).map_err(|e| e.to_string()));
+    match result {
+        Ok(doc) => {
             app.doc = doc;
             app.matches = find_matches(&app.doc.plain_lines, &app.search_input);
             app.current_match = None;
             app.scroll = app.scroll.min(max_scroll(&app.doc, content_height));
             app.status = Some(Status::success("Reloaded"));
         }
-        Ok(Err(e)) | Err(e) => {
+        Err(e) => {
             app.status = Some(Status::warn(format!("Reload failed: {e}")));
         }
     }
@@ -618,8 +626,14 @@ fn reload(app: &mut App, config: &RenderConfig, content_height: usize) {
 
 /// Run the interactive pager over `content`. When `path` is given, the file
 /// is watched and the view auto-reloads on changes; without a path (e.g.
-/// piped stdin) the document is static.
-pub fn run_pager(content: &str, path: Option<PathBuf>, config: &RenderConfig) -> io::Result<()> {
+/// piped stdin) the document is static. `mq_query`, if given, is re-applied
+/// on every reload as well as the initial load.
+pub fn run_pager(
+    content: &str,
+    path: Option<PathBuf>,
+    config: &RenderConfig,
+    mq_query: Option<String>,
+) -> io::Result<()> {
     let doc = Document::load(content, config)?;
 
     // Make sure a panic mid-render doesn't leave the user's terminal stuck
@@ -655,6 +669,7 @@ pub fn run_pager(content: &str, path: Option<PathBuf>, config: &RenderConfig) ->
         status: None,
         path,
         title,
+        mq_query,
     };
 
     let result = event_loop(
