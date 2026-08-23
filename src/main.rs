@@ -1,7 +1,7 @@
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use mq_markdown::Markdown;
-use mq_view::{RenderConfig, render_markdown_with_config, run_pager};
+use mq_view::{RenderConfig, Theme, ThemeMode, render_markdown_with_config, run_pager};
 use std::fs;
 use std::io::{self, BufWriter, Write};
 use std::io::{IsTerminal, Read};
@@ -25,12 +25,28 @@ pub struct Args {
     #[arg(short = 'q', long = "query")]
     query: Option<String>,
 
+    /// Color palette. `auto` guesses dark/light from the COLORFGBG env var
+    /// and falls back to dark.
+    #[arg(long = "theme", value_enum, default_value_t = ThemeMode::Auto)]
+    theme: ThemeMode,
+
+    /// Disable all ANSI color output
+    #[arg(long = "no-color")]
+    no_color: bool,
+
+    /// Show a line-number gutter on code blocks
+    #[arg(short = 'n', long = "line-numbers")]
+    line_numbers: bool,
+
     /// Markdown file to view
     file: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    let no_color = args.no_color || std::env::var_os("NO_COLOR").is_some();
+    colored::control::set_override(!no_color);
+
     let content = if io::stdin().is_terminal() {
         if let Some(file) = &args.file {
             fs::read_to_string(file).into_diagnostic()?
@@ -49,6 +65,9 @@ fn main() -> Result<()> {
 
     let config = RenderConfig {
         header_full_width_highlight: !args.no_header_highlight,
+        theme: Theme::resolve(args.theme),
+        no_color,
+        line_numbers: args.line_numbers,
         ..RenderConfig::default()
     };
 

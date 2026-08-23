@@ -18,12 +18,14 @@ mod highlighter;
 mod mermaid;
 mod pager;
 mod renderer;
+mod theme;
 
 pub use highlighter::SyntaxHighlighter;
 pub use pager::run_pager;
 pub use renderer::{
     RenderConfig, render_markdown, render_markdown_to_string, render_markdown_with_config,
 };
+pub use theme::{Theme, ThemeMode};
 
 /// Runs an mq query against `content` and re-serializes the resulting nodes
 /// back to Markdown source, so the result can be fed into the same parse

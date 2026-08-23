@@ -1,4 +1,5 @@
 use crate::highlighter::SyntaxHighlighter;
+use crate::theme::Theme;
 use colored::*;
 use mq_markdown::{Markdown, Node};
 use std::io::{self, Write};
@@ -17,6 +18,12 @@ pub struct RenderConfig {
     /// render functions, so it must be disabled by callers (like the pager)
     /// that manage their own alternate-screen terminal buffer.
     pub inline_images: bool,
+    /// Color palette for headings, callouts, syntax highlighting, etc.
+    pub theme: Theme,
+    /// Suppress all ANSI color output.
+    pub no_color: bool,
+    /// Show a line-number gutter on code blocks.
+    pub line_numbers: bool,
 }
 
 impl Default for RenderConfig {
@@ -24,6 +31,9 @@ impl Default for RenderConfig {
         Self {
             header_full_width_highlight: true,
             inline_images: true,
+            theme: Theme::dark(),
+            no_color: false,
+            line_numbers: false,
         }
     }
 }
@@ -40,11 +50,12 @@ static WIDTH: LazyLock<usize> = LazyLock::new(|| {
     }
 });
 
-/// GitHub-style callout definitions
+/// GitHub-style callout definitions. Colors live in `Theme::callout`
+/// (indexed by position in this table) so a callout's look follows the
+/// active theme instead of being fixed here.
 #[derive(Debug, Clone)]
 struct Callout {
     icon: &'static str,
-    color: colored::Color,
     name: &'static str,
 }
 
@@ -53,7 +64,6 @@ const CALLOUTS: &[(&str, Callout)] = &[
         "NOTE",
         Callout {
             icon: "ℹ️",
-            color: colored::Color::Blue,
             name: "Note",
         },
     ),
@@ -61,7 +71,6 @@ const CALLOUTS: &[(&str, Callout)] = &[
         "TIP",
         Callout {
             icon: "💡",
-            color: colored::Color::Green,
             name: "Tip",
         },
     ),
@@ -69,7 +78,6 @@ const CALLOUTS: &[(&str, Callout)] = &[
         "IMPORTANT",
         Callout {
             icon: "❗",
-            color: colored::Color::Magenta,
             name: "Important",
         },
     ),
@@ -77,7 +85,6 @@ const CALLOUTS: &[(&str, Callout)] = &[
         "WARNING",
         Callout {
             icon: "⚠️",
-            color: colored::Color::Yellow,
             name: "Warning",
         },
     ),
@@ -85,7 +92,6 @@ const CALLOUTS: &[(&str, Callout)] = &[
         "CAUTION",
         Callout {
             icon: "🔥",
-            color: colored::Color::Red,
             name: "Caution",
         },
     ),
@@ -132,7 +138,7 @@ pub fn render_markdown_with_config<W: Write>(
     writer: &mut W,
     config: &RenderConfig,
 ) -> io::Result<()> {
-    let mut highlighter = SyntaxHighlighter::new();
+    let mut highlighter = SyntaxHighlighter::new(config.theme.syntax, config.no_color);
     let mut i = 0;
     let len = markdown.nodes.len();
 
@@ -149,7 +155,7 @@ pub fn render_markdown_with_config<W: Write>(
                     )
                 })
                 .collect();
-            render_table(&table_nodes, &mut highlighter, writer)?;
+            render_table(&table_nodes, &mut highlighter, config, writer)?;
             i += table_nodes.len();
         } else {
             render_node(node, 0, &mut highlighter, config, writer)?;
@@ -193,7 +199,7 @@ pub(crate) fn render_markdown_with_outline(
     markdown: &Markdown,
     config: &RenderConfig,
 ) -> io::Result<(String, Vec<HeadingEntry>)> {
-    let mut highlighter = SyntaxHighlighter::new();
+    let mut highlighter = SyntaxHighlighter::new(config.theme.syntax, config.no_color);
     let mut output: Vec<u8> = Vec::new();
     let mut headings = Vec::new();
     let mut i = 0;
@@ -222,7 +228,7 @@ pub(crate) fn render_markdown_with_outline(
                     )
                 })
                 .collect();
-            render_table(&table_nodes, &mut highlighter, &mut output)?;
+            render_table(&table_nodes, &mut highlighter, config, &mut output)?;
             i += table_nodes.len();
         } else {
             render_node(node, 0, &mut highlighter, config, &mut output)?;
@@ -366,7 +372,7 @@ fn render_boxed_lines<W: Write>(
     Ok(())
 }
 
-fn detect_callout(text: &str) -> Option<&'static Callout> {
+fn detect_callout(text: &str) -> Option<(usize, &'static Callout)> {
     let trimmed = text.trim();
     if trimmed.starts_with("[!")
         && trimmed.contains(']')
@@ -375,8 +381,8 @@ fn detect_callout(text: &str) -> Option<&'static Callout> {
         let callout_type = &trimmed[2..end];
         return CALLOUTS
             .iter()
-            .find(|(name, _)| name.eq_ignore_ascii_case(callout_type))
-            .map(|(_, callout)| callout);
+            .position(|(name, _)| name.eq_ignore_ascii_case(callout_type))
+            .map(|idx| (idx, &CALLOUTS[idx].1));
     }
     None
 }
@@ -412,99 +418,46 @@ fn render_node_inline<W: Write>(
 
             let text = render_inline_content(&heading.values);
 
+            let theme = &config.theme;
             if config.header_full_width_highlight {
                 let padding =
                     WIDTH.saturating_sub(visible_width(&text) + visible_width(&symbol) + 2);
                 let line = format!("{}{}", text, " ".repeat(padding));
 
-                // Full-width background highlighting
-                match heading.depth {
-                    1 => {
+                match theme
+                    .heading_bg
+                    .get(heading.depth.saturating_sub(1) as usize)
+                {
+                    Some(&bg) => {
                         writeln!(
                             writer,
                             "{}{}{}",
-                            symbol.bold().black().on_bright_blue(),
-                            "  ".on_bright_blue(),
-                            line.bold().bright_black().on_bright_blue()
+                            symbol.bold().color(theme.heading_bg_fg).on_color(bg),
+                            "  ".on_color(bg),
+                            line.bold().color(theme.heading_bg_fg).on_color(bg)
                         )?;
                     }
-                    2 => {
+                    None => {
                         writeln!(
                             writer,
-                            "{}{}{}",
-                            symbol.bold().black().on_cyan(),
-                            "  ".on_cyan(),
-                            line.bold().bright_black().on_cyan()
+                            "{}  {}",
+                            symbol.bold().color(theme.heading_fallback),
+                            text.bold().color(theme.heading_fallback)
                         )?;
-                    }
-                    3 => {
-                        writeln!(
-                            writer,
-                            "{}{}{}",
-                            symbol.bold().black().on_yellow(),
-                            "  ".on_yellow(),
-                            line.bold().bright_black().on_yellow()
-                        )?;
-                    }
-                    4 => {
-                        writeln!(
-                            writer,
-                            "{}{}{}",
-                            symbol.bold().black().on_green(),
-                            "  ".on_green(),
-                            line.bold().bright_black().on_green()
-                        )?;
-                    }
-                    5 => {
-                        writeln!(
-                            writer,
-                            "{}{}{}",
-                            symbol.bold().black().on_magenta(),
-                            "  ".on_magenta(),
-                            line.bold().bright_black().on_magenta()
-                        )?;
-                    }
-                    _ => {
-                        writeln!(writer, "{}  {}", symbol.bold().white(), text.bold().white())?;
                     }
                 }
             } else {
-                // Simple header without full-width highlighting
-                match heading.depth {
-                    1 => {
-                        writeln!(
-                            writer,
-                            "{}  {}",
-                            symbol.bold().bright_blue(),
-                            text.bold().bright_blue()
-                        )?;
-                    }
-                    2 => {
-                        writeln!(writer, "{}  {}", symbol.bold().cyan(), text.bold().cyan())?;
-                    }
-                    3 => {
-                        writeln!(
-                            writer,
-                            "{}  {}",
-                            symbol.bold().yellow(),
-                            text.bold().yellow()
-                        )?;
-                    }
-                    4 => {
-                        writeln!(writer, "{}  {}", symbol.bold().green(), text.bold().green())?;
-                    }
-                    5 => {
-                        writeln!(
-                            writer,
-                            "{}  {}",
-                            symbol.bold().magenta(),
-                            text.bold().magenta()
-                        )?;
-                    }
-                    _ => {
-                        writeln!(writer, "{}  {}", symbol.bold().white(), text.bold().white())?;
-                    }
-                }
+                let fg = theme
+                    .heading_plain
+                    .get(heading.depth.saturating_sub(1) as usize)
+                    .copied()
+                    .unwrap_or(theme.heading_fallback);
+                writeln!(
+                    writer,
+                    "{}  {}",
+                    symbol.bold().color(fg),
+                    text.bold().color(fg)
+                )?;
             }
             writeln!(writer)?;
         }
@@ -540,18 +493,26 @@ fn render_node_inline<W: Write>(
             } else {
                 // Apply syntax highlighting if language is specified
                 let highlighted = highlighter.highlight(&code.value, code.lang.as_deref());
-                let lines: Vec<String> = highlighted
+                let mut lines: Vec<String> = highlighted
                     .strip_suffix('\n')
                     .unwrap_or(&highlighted)
                     .split('\n')
                     .map(str::to_string)
                     .collect();
 
+                if config.line_numbers {
+                    let gutter_width = lines.len().to_string().len();
+                    for (i, line) in lines.iter_mut().enumerate() {
+                        let gutter = format!("{:>gutter_width$} │ ", i + 1);
+                        *line = format!("{}{}", gutter.color(config.theme.muted), line);
+                    }
+                }
+
                 writeln!(writer)?;
                 render_boxed_lines(
                     writer,
                     code.lang.as_deref(),
-                    colored::Color::BrightBlack,
+                    config.theme.code_border,
                     &lines,
                 )?;
                 writeln!(writer)?;
@@ -559,7 +520,11 @@ fn render_node_inline<W: Write>(
         }
 
         Node::CodeInline(code) => {
-            write!(writer, "{}", format!("`{}`", code.value).bright_yellow())?;
+            write!(
+                writer,
+                "{}",
+                format!("`{}`", code.value).color(config.theme.inline_code)
+            )?;
         }
 
         Node::Strong(strong) => {
@@ -583,7 +548,7 @@ fn render_node_inline<W: Write>(
                 write!(
                     writer,
                     " {} {}",
-                    "🔗".bright_blue(),
+                    "🔗".color(config.theme.link),
                     make_clickable_link(url, url)
                 )?;
             } else {
@@ -591,8 +556,10 @@ fn render_node_inline<W: Write>(
                 write!(
                     writer,
                     " {} {}",
-                    "🔗".bright_blue(),
-                    make_clickable_link(url, &text).underline().bright_blue()
+                    "🔗".color(config.theme.link),
+                    make_clickable_link(url, &text)
+                        .underline()
+                        .color(config.theme.link)
                 )?;
             }
         }
@@ -610,22 +577,22 @@ fn render_node_inline<W: Write>(
                 writeln!(
                     writer,
                     "{} {}",
-                    "🖼️ ".bright_green(),
-                    url.underline().bright_green()
+                    "🖼️ ".color(config.theme.image),
+                    url.underline().color(config.theme.image)
                 )?;
             } else {
                 writeln!(
                     writer,
                     "{} {} ({})",
-                    "🖼️ ".bright_green(),
-                    alt.bright_green(),
-                    url.bright_black()
+                    "🖼️ ".color(config.theme.image),
+                    alt.color(config.theme.image),
+                    url.color(config.theme.muted)
                 )?;
             }
         }
 
         Node::HorizontalRule(_) => {
-            writeln!(writer, "{}", "─".repeat(80).bright_black())?;
+            writeln!(writer, "{}", "─".repeat(80).color(config.theme.muted))?;
             writeln!(writer)?;
         }
 
@@ -664,7 +631,7 @@ fn render_node_inline<W: Write>(
             };
 
             if is_callout {
-                render_callout_blockquote(blockquote, writer)?;
+                render_callout_blockquote(blockquote, &config.theme, writer)?;
             } else {
                 render_regular_blockquote(blockquote, depth, highlighter, config, writer)?;
             }
@@ -679,7 +646,7 @@ fn render_node_inline<W: Write>(
             if !inline {
                 writeln!(writer)?;
             }
-            render_native_callout(callout, writer)?;
+            render_native_callout(callout, &config.theme, writer)?;
             writeln!(writer)?;
         }
 
@@ -755,7 +722,13 @@ fn render_list<W: Write>(
         None => "",
     };
 
-    write!(writer, "{}{} {}", indent, bullet.bright_magenta(), checkbox)?;
+    write!(
+        writer,
+        "{}{} {}",
+        indent,
+        bullet.color(config.theme.checkbox_bullet),
+        checkbox
+    )?;
 
     let mut has_content = false;
     for value in &list.values {
@@ -822,6 +795,7 @@ fn inline_node_to_text(node: &Node) -> String {
 
 fn render_callout_blockquote<W: Write>(
     blockquote: &mq_markdown::Blockquote,
+    theme: &Theme,
     writer: &mut W,
 ) -> io::Result<()> {
     let inline_nodes = flatten_inline(&blockquote.values);
@@ -836,7 +810,7 @@ fn render_callout_blockquote<W: Write>(
     let Node::Text(marker_text) = inline_nodes[marker_idx] else {
         unreachable!()
     };
-    let Some(callout) = detect_callout(&marker_text.value) else {
+    let Some((callout_idx, callout)) = detect_callout(&marker_text.value) else {
         unreachable!()
     };
 
@@ -867,16 +841,23 @@ fn render_callout_blockquote<W: Write>(
         .flat_map(|line| wrap_visible(line, inner_width))
         .collect();
 
-    render_boxed_lines(writer, Some(&header_text), callout.color, &wrapped_lines)
+    render_boxed_lines(
+        writer,
+        Some(&header_text),
+        theme.callout[callout_idx],
+        &wrapped_lines,
+    )
 }
 
 fn render_native_callout<W: Write>(
     callout: &mq_markdown::Callout,
+    theme: &Theme,
     writer: &mut W,
 ) -> io::Result<()> {
-    let Some((_, def)) = CALLOUTS
+    let Some((callout_idx, def)) = CALLOUTS
         .iter()
-        .find(|(name, _)| name.eq_ignore_ascii_case(&callout.kind))
+        .position(|(name, _)| name.eq_ignore_ascii_case(&callout.kind))
+        .map(|idx| (idx, &CALLOUTS[idx].1))
     else {
         return Ok(());
     };
@@ -903,7 +884,12 @@ fn render_native_callout<W: Write>(
         .flat_map(|line| wrap_visible(line, inner_width))
         .collect();
 
-    render_boxed_lines(writer, Some(&header_text), def.color, &wrapped_lines)
+    render_boxed_lines(
+        writer,
+        Some(&header_text),
+        theme.callout[callout_idx],
+        &wrapped_lines,
+    )
 }
 
 fn render_regular_blockquote<W: Write>(
@@ -914,7 +900,7 @@ fn render_regular_blockquote<W: Write>(
     writer: &mut W,
 ) -> io::Result<()> {
     for value in &blockquote.values {
-        write!(writer, "{} ", "▌".bright_black())?;
+        write!(writer, "{} ", "▌".color(config.theme.muted))?;
         render_node_inline(value, depth, false, highlighter, config, writer)?;
     }
     Ok(())
@@ -968,14 +954,20 @@ fn get_node_children(node: &Node) -> Option<&Vec<Node>> {
 fn render_table<W: Write>(
     table_nodes: &[&Node],
     highlighter: &mut SyntaxHighlighter,
+    config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
     if table_nodes.is_empty() {
         return Ok(());
     }
 
-    // Tables don't use full-width highlighting, use default config
-    let config = RenderConfig::default();
+    // Tables don't use full-width heading highlighting, but keep the rest
+    // of the caller's config (theme, no_color, line_numbers).
+    let config = &RenderConfig {
+        header_full_width_highlight: false,
+        ..config.clone()
+    };
+    let theme = &config.theme;
 
     // Calculate column widths from all cells
     let all_nodes: Vec<Node> = table_nodes.iter().map(|n| (*n).clone()).collect();
@@ -996,10 +988,10 @@ fn render_table<W: Write>(
     writeln!(writer)?;
 
     // Render top border
-    render_table_top_border(&column_widths, col_count, writer)?;
+    render_table_top_border(&column_widths, col_count, theme, writer)?;
 
     // Render cells row by row
-    write!(writer, "{}", "│ ".bright_cyan())?;
+    write!(writer, "{}", "│ ".color(theme.table_border))?;
 
     for (i, node) in table_nodes.iter().enumerate() {
         match node {
@@ -1008,7 +1000,7 @@ fn render_table<W: Write>(
                 let width = column_widths.get(cell.column).copied().unwrap_or(0);
 
                 for value in &cell.values {
-                    render_node_inline(value, 0, true, highlighter, &config, writer)?;
+                    render_node_inline(value, 0, true, highlighter, config, writer)?;
                 }
 
                 // Pad with spaces to align columns
@@ -1017,7 +1009,7 @@ fn render_table<W: Write>(
                     write!(writer, "{}", " ".repeat(width - content_width))?;
                 }
 
-                write!(writer, " {}", "│ ".bright_cyan())?;
+                write!(writer, " {}", "│ ".color(theme.table_border))?;
 
                 // Check if this is the last cell in its row
                 let is_last_in_row = match table_nodes.get(i + 1) {
@@ -1030,16 +1022,16 @@ fn render_table<W: Write>(
                     // Check if next node is the header separator or another cell
                     if i + 1 < table_nodes.len() {
                         if let Some(Node::TableAlign(header)) = table_nodes.get(i + 1) {
-                            render_table_header(header, &column_widths, writer)?;
+                            render_table_header(header, &column_widths, theme, writer)?;
                             // After header, if there's another cell, start a new row
                             if i + 2 < table_nodes.len()
                                 && matches!(table_nodes.get(i + 2), Some(Node::TableCell(_)))
                             {
-                                write!(writer, "{}", "│ ".bright_cyan())?;
+                                write!(writer, "{}", "│ ".color(theme.table_border))?;
                             }
                         } else if matches!(table_nodes.get(i + 1), Some(Node::TableCell(_))) {
                             // Start new row
-                            write!(writer, "{}", "│ ".bright_cyan())?;
+                            write!(writer, "{}", "│ ".color(theme.table_border))?;
                         }
                     }
                 }
@@ -1048,14 +1040,14 @@ fn render_table<W: Write>(
                 // Already handled in the TableCell last_cell_in_row logic
             }
             Node::TableRow(row) => {
-                render_table_row(row, &column_widths, highlighter, &config, writer)?;
+                render_table_row(row, &column_widths, highlighter, config, writer)?;
             }
             _ => {}
         }
     }
 
     // Render bottom border
-    render_table_bottom_border(&column_widths, col_count, writer)?;
+    render_table_bottom_border(&column_widths, col_count, theme, writer)?;
 
     writeln!(writer)?;
     Ok(())
@@ -1100,17 +1092,22 @@ fn calculate_column_widths(nodes: &[Node]) -> Vec<usize> {
 fn render_table_top_border<W: Write>(
     column_widths: &[usize],
     col_count: usize,
+    theme: &Theme,
     writer: &mut W,
 ) -> io::Result<()> {
-    write!(writer, "{}", "┌".bright_black())?;
+    write!(writer, "{}", "┌".color(theme.table_border))?;
     for i in 0..col_count {
         let width = column_widths.get(i).copied().unwrap_or(4);
-        write!(writer, "{}", "─".repeat(width + 2).bright_black())?;
+        write!(
+            writer,
+            "{}",
+            "─".repeat(width + 2).color(theme.table_border)
+        )?;
         if i < col_count - 1 {
-            write!(writer, "{}", "┬".bright_black())?;
+            write!(writer, "{}", "┬".color(theme.table_border))?;
         }
     }
-    writeln!(writer, "{}", "┐".bright_black())?;
+    writeln!(writer, "{}", "┐".color(theme.table_border))?;
     Ok(())
 }
 
@@ -1118,17 +1115,22 @@ fn render_table_top_border<W: Write>(
 fn render_table_bottom_border<W: Write>(
     column_widths: &[usize],
     col_count: usize,
+    theme: &Theme,
     writer: &mut W,
 ) -> io::Result<()> {
-    write!(writer, "{}", "└".bright_black())?;
+    write!(writer, "{}", "└".color(theme.table_border))?;
     for i in 0..col_count {
         let width = column_widths.get(i).copied().unwrap_or(4);
-        write!(writer, "{}", "─".repeat(width + 2).bright_black())?;
+        write!(
+            writer,
+            "{}",
+            "─".repeat(width + 2).color(theme.table_border)
+        )?;
         if i < col_count - 1 {
-            write!(writer, "{}", "┴".bright_black())?;
+            write!(writer, "{}", "┴".color(theme.table_border))?;
         }
     }
-    writeln!(writer, "{}", "┘".bright_black())?;
+    writeln!(writer, "{}", "┘".color(theme.table_border))?;
     Ok(())
 }
 
@@ -1136,9 +1138,10 @@ fn render_table_bottom_border<W: Write>(
 fn render_table_header<W: Write>(
     header: &mq_markdown::TableAlign,
     column_widths: &[usize],
+    theme: &Theme,
     writer: &mut W,
 ) -> io::Result<()> {
-    write!(writer, "{}", "├".bright_black())?;
+    write!(writer, "{}", "├".color(theme.table_border))?;
     for (i, align) in header.align.iter().enumerate() {
         let width = column_widths.get(i).copied().unwrap_or(4);
         let (left, right) = match align {
@@ -1148,15 +1151,15 @@ fn render_table_header<W: Write>(
             mq_markdown::TableAlignKind::None => ("─", "─"),
         };
 
-        write!(writer, "{}", left.bright_black())?;
-        write!(writer, "{}", "─".repeat(width).bright_black())?;
-        write!(writer, "{}", right.bright_black())?;
+        write!(writer, "{}", left.color(theme.table_border))?;
+        write!(writer, "{}", "─".repeat(width).color(theme.table_border))?;
+        write!(writer, "{}", right.color(theme.table_border))?;
 
         if i < header.align.len() - 1 {
-            write!(writer, "{}", "┼".bright_black())?;
+            write!(writer, "{}", "┼".color(theme.table_border))?;
         }
     }
-    writeln!(writer, "{}", "┤".bright_black())?;
+    writeln!(writer, "{}", "┤".color(theme.table_border))?;
     Ok(())
 }
 
@@ -1168,7 +1171,7 @@ fn render_table_row<W: Write>(
     config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
-    write!(writer, "{}", "│ ".bright_cyan())?;
+    write!(writer, "{}", "│ ".color(config.theme.table_border))?;
     for (col_idx, cell_node) in row.values.iter().enumerate() {
         if let Node::TableCell(cell) = cell_node {
             let content = render_inline_content(&cell.values);
@@ -1184,7 +1187,7 @@ fn render_table_row<W: Write>(
                 write!(writer, "{}", " ".repeat(width - content_width))?;
             }
 
-            write!(writer, " {}", "│ ".bright_cyan())?;
+            write!(writer, " {}", "│ ".color(config.theme.table_border))?;
         }
     }
     writeln!(writer)?;
@@ -1199,7 +1202,7 @@ fn render_table_cell<W: Write>(
     config: &RenderConfig,
     writer: &mut W,
 ) -> io::Result<()> {
-    write!(writer, "{}", "│ ".bright_cyan())?;
+    write!(writer, "{}", "│ ".color(config.theme.table_border))?;
 
     let content = render_inline_content(&cell.values);
     let width = column_widths.get(cell.column).copied().unwrap_or(0);
@@ -1215,7 +1218,7 @@ fn render_table_cell<W: Write>(
     }
 
     write!(writer, " ")?;
-    writeln!(writer, "{}", "│".bright_cyan())?;
+    writeln!(writer, "{}", "│".color(config.theme.table_border))?;
     Ok(())
 }
 
