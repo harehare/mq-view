@@ -1,6 +1,11 @@
-<h1 align="center">mq-view</h1>
+<div align="center">
+  <img src="assets/logo.svg" style="width: 128px; height: 128px;"/>
+
+<h1>mq-view</h1>
 
 [![ci](https://github.com/harehare/mq-view/actions/workflows/ci.yml/badge.svg)](https://github.com/harehare/mq-view/actions/workflows/ci.yml)
+
+</div>
 
 A library and CLI tool for rendering Markdown documents with syntax highlighting and rich text formatting.
 Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for markdown processing.
@@ -15,6 +20,7 @@ Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for 
 - 🔔 **GitHub-style Callouts**: NOTE, TIP, IMPORTANT, WARNING, CAUTION, rendered as wrapped, bordered boxes
 - 🔗 **Clickable Links**: Terminal hyperlinks using OSC 8
 - 📖 **Pager Mode**: Interactive full-screen viewer with scrolling, a heading outline, search, and auto-reload on file changes
+- 🔎 **mq Query Filtering**: Filter the document through an [mq](https://github.com/harehare/mq) query before rendering
 
 ## Installation
 
@@ -106,6 +112,19 @@ cat report.md | mq-view --pager
 
 When viewing a file (not piped input), the pager watches it and
 automatically re-renders whenever it changes on disk.
+
+### mq Query Filtering
+
+Pass `-q`/`--query` with an [mq](https://github.com/harehare/mq) query to filter the
+document before rendering — works with both plain output and `--pager`:
+
+```bash
+mq-view --query '.h' README.md          # only headings
+mq-view --query '.code | select(.lang == "rust")' README.md
+mq-view --pager --query '.h' README.md
+```
+
+In `--pager` mode, the query is re-applied on every auto-reload as well.
 
 ### Mermaid Diagrams
 

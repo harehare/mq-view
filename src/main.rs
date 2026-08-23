@@ -21,6 +21,10 @@ pub struct Args {
     #[arg(short = 'p', long = "pager")]
     pager: bool,
 
+    /// Filter the document through an mq query before rendering
+    #[arg(short = 'q', long = "query")]
+    query: Option<String>,
+
     /// Markdown file to view
     file: Option<PathBuf>,
 }
@@ -38,6 +42,10 @@ fn main() -> Result<()> {
         io::stdin().read_to_string(&mut buffer).into_diagnostic()?;
         buffer
     };
+    let content = match &args.query {
+        Some(query) => mq_view::apply_query(&content, query)?,
+        None => content,
+    };
 
     let config = RenderConfig {
         header_full_width_highlight: !args.no_header_highlight,
@@ -45,7 +53,7 @@ fn main() -> Result<()> {
     };
 
     if args.pager {
-        return run_pager(&content, args.file, &config).into_diagnostic();
+        return run_pager(&content, args.file, &config, args.query).into_diagnostic();
     }
 
     let markdown: Markdown = content.parse().map_err(|e| miette::miette!("{}", e))?;

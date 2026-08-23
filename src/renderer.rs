@@ -672,6 +672,17 @@ fn render_node_inline<W: Write>(
             writeln!(writer)?;
         }
 
+        // mq-markdown parses `> [!TYPE] ...` directly into this variant
+        // rather than a plain Blockquote (see the `callout` feature in
+        // Cargo.toml).
+        Node::Callout(callout) => {
+            if !inline {
+                writeln!(writer)?;
+            }
+            render_native_callout(callout, writer)?;
+            writeln!(writer)?;
+        }
+
         Node::Html(html) => {
             // Apply syntax highlighting to HTML
             let highlighted = highlighter.highlight(&html.value, Some("html"));
@@ -857,6 +868,42 @@ fn render_callout_blockquote<W: Write>(
         .collect();
 
     render_boxed_lines(writer, Some(&header_text), callout.color, &wrapped_lines)
+}
+
+fn render_native_callout<W: Write>(
+    callout: &mq_markdown::Callout,
+    writer: &mut W,
+) -> io::Result<()> {
+    let Some((_, def)) = CALLOUTS
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(&callout.kind))
+    else {
+        return Ok(());
+    };
+
+    let mut content_lines: Vec<String> = Vec::new();
+    if let Some(title) = &callout.title {
+        content_lines.push(title.clone());
+    }
+    let body: String = flatten_inline(&callout.values)
+        .into_iter()
+        .map(inline_node_to_text)
+        .collect();
+    for paragraph in body.split('\n') {
+        if paragraph.trim().is_empty() {
+            continue;
+        }
+        content_lines.push(paragraph.trim().to_string());
+    }
+
+    let header_text = format!("{} {}", def.icon, def.name);
+    let inner_width = box_inner_width(visible_width(&header_text));
+    let wrapped_lines: Vec<String> = content_lines
+        .iter()
+        .flat_map(|line| wrap_visible(line, inner_width))
+        .collect();
+
+    render_boxed_lines(writer, Some(&header_text), def.color, &wrapped_lines)
 }
 
 fn render_regular_blockquote<W: Write>(
