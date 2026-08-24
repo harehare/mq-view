@@ -19,8 +19,10 @@ Built with [mq](https://github.com/harehare/mq) - jq-like command-line tool for 
 - 🧜 **Mermaid Diagrams**: Best-effort ASCII-art rendering of simple `graph`/`flowchart` blocks
 - 🔔 **GitHub-style Callouts**: NOTE, TIP, IMPORTANT, WARNING, CAUTION, rendered as wrapped, bordered boxes
 - 🔗 **Clickable Links**: Terminal hyperlinks using OSC 8
-- 📖 **Pager Mode**: Interactive full-screen viewer with scrolling, a heading outline, search, and auto-reload on file changes
+- 📖 **Pager Mode**: Interactive full-screen viewer with scrolling, a heading outline, link navigation with back/forward history, mouse support, and auto-reload on file changes
 - 🔎 **mq Query Filtering**: Filter the document through an [mq](https://github.com/harehare/mq) query before rendering
+- 🎨 **Themes**: Dark/light color palettes (with auto-detection) and `NO_COLOR` support
+- 🔢 **Line Numbers**: Optional line-number gutter on code blocks
 
 ## Installation
 
@@ -84,6 +86,23 @@ Pipe markdown content:
 echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 ```
 
+### Themes and Colors
+
+```bash
+mq-view --theme dark README.md    # force the dark palette
+mq-view --theme light README.md   # force the light palette
+mq-view --theme auto README.md    # default: guess from the COLORFGBG env var, fall back to dark
+mq-view --no-color README.md      # disable all ANSI color output (also respects $NO_COLOR)
+```
+
+### Line Numbers
+
+```bash
+mq-view --line-numbers README.md  # or -n
+```
+
+In `--pager` mode, `L` toggles the line-number gutter at runtime.
+
 ### Pager Mode
 
 Open an interactive, full-screen viewer with `--pager` (`-p`):
@@ -106,12 +125,24 @@ cat report.md | mq-view --pager
 | `d` / `u` (with or without `Ctrl`) | Scroll half a page down / up |
 | `g` / `Home`, `G` / `End` | Jump to top / bottom |
 | `Tab` | Toggle the heading outline; `j`/`k` to move, `Enter` to jump |
+| `Enter` | Open the link list; `j`/`k` to move, `Enter` to follow, `Esc` to cancel |
+| `[` / `]` | Go back / forward through followed links |
+| `L` | Toggle the code-block line-number gutter |
 | `/` | Search; `Enter` to confirm, `Esc` to cancel |
 | `n` / `N` | Jump to the next / previous search match |
+| Mouse wheel | Scroll (or move the selection inside an open list) |
+| Mouse click | Select and jump to an item in the heading/link list |
 | `q` / `Esc` | Quit |
 
 When viewing a file (not piped input), the pager watches it and
-automatically re-renders whenever it changes on disk.
+automatically re-renders whenever it changes on disk. Following a link to
+another local Markdown file re-points the watcher at that file; the
+`--query` filter (if any) only applies to the file mq-view was originally
+opened with, not to files reached by following a link.
+
+Links are resolved as: `#anchor` jumps to a matching heading in the current
+document; `scheme://...` and `mailto:` links open in your OS's default
+handler; anything else is treated as a path relative to the current file.
 
 ### mq Query Filtering
 

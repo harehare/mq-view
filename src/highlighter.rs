@@ -1,3 +1,4 @@
+use crate::theme::SyntaxPalette;
 use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, Highlighter};
 
 /// Syntax highlighter supporting various programming languages and HTML.
@@ -8,21 +9,25 @@ use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, H
 /// # Examples
 ///
 /// ```rust
-/// use mq_view::SyntaxHighlighter;
+/// use mq_view::{SyntaxHighlighter, Theme};
 ///
-/// let mut highlighter = SyntaxHighlighter::new();
+/// let mut highlighter = SyntaxHighlighter::new(Theme::dark().syntax, false);
 /// let code = "fn main() { println!(\"Hello\"); }";
 /// let highlighted = highlighter.highlight(code, Some("rust"));
 /// println!("{}", highlighted);
 /// ```
 pub struct SyntaxHighlighter {
     highlighter: Highlighter,
+    palette: SyntaxPalette,
+    no_color: bool,
 }
 
 impl SyntaxHighlighter {
-    pub fn new() -> Self {
+    pub fn new(palette: SyntaxPalette, no_color: bool) -> Self {
         Self {
             highlighter: Highlighter::new(),
+            palette,
+            no_color,
         }
     }
 
@@ -227,6 +232,8 @@ impl SyntaxHighlighter {
             return code.to_string();
         };
 
+        let palette = self.palette;
+        let no_color = self.no_color;
         let highlights = match self
             .highlighter
             .highlight(&config, code.as_bytes(), None, |_| None)
@@ -249,13 +256,12 @@ impl SyntaxHighlighter {
                     current_pos = end;
                 }
                 Ok(HighlightEvent::HighlightStart(Highlight(idx))) => {
-                    // Apply color based on highlight type
-                    let color_code = Self::get_color_for_highlight(idx);
-                    result.push_str(color_code);
+                    result.push_str(&Self::color_for_highlight(&palette, no_color, idx));
                 }
                 Ok(HighlightEvent::HighlightEnd) => {
-                    // Reset color
-                    result.push_str("\x1b[0m");
+                    if !no_color {
+                        result.push_str("\x1b[0m");
+                    }
                 }
                 Err(_) => {}
             }
@@ -269,43 +275,14 @@ impl SyntaxHighlighter {
         result
     }
 
-    /// Map highlight index to ANSI color codes
-    fn get_color_for_highlight(idx: usize) -> &'static str {
-        match idx {
-            0 => "\x1b[36m",  // attribute - cyan
-            1 => "\x1b[35m",  // constant - magenta
-            2 => "\x1b[33m",  // function.builtin - yellow
-            3 => "\x1b[34m",  // function - blue
-            4 => "\x1b[95m",  // keyword - bright magenta
-            5 => "\x1b[37m",  // operator - white
-            6 => "\x1b[36m",  // property - cyan
-            7 => "\x1b[90m",  // punctuation - bright black
-            8 => "\x1b[90m",  // punctuation.bracket - bright black
-            9 => "\x1b[90m",  // punctuation.delimiter - bright black
-            10 => "\x1b[32m", // string - green
-            11 => "\x1b[92m", // string.special - bright green
-            12 => "\x1b[34m", // tag - blue
-            13 => "\x1b[33m", // type - yellow
-            14 => "\x1b[93m", // type.builtin - bright yellow
-            15 => "\x1b[37m", // variable - white
-            16 => "\x1b[35m", // variable.builtin - magenta
-            17 => "\x1b[36m", // variable.parameter - cyan
-            18 => "\x1b[90m", // comment - bright black (gray)
-            19 => "\x1b[35m", // number - magenta
-            20 => "\x1b[35m", // boolean - magenta
-            21 => "\x1b[36m", // escape - cyan
-            22 => "\x1b[33m", // label - yellow
-            23 => "\x1b[36m", // namespace - cyan
-            24 => "\x1b[33m", // constructor - yellow
-            25 => "\x1b[37m", // embedded - white
-            _ => "\x1b[0m",   // default - reset
+    fn color_for_highlight(palette: &SyntaxPalette, no_color: bool, idx: usize) -> String {
+        if no_color {
+            return String::new();
         }
-    }
-}
-
-impl Default for SyntaxHighlighter {
-    fn default() -> Self {
-        Self::new()
+        match palette.get(idx) {
+            Some(&(r, g, b)) => format!("\x1b[38;2;{r};{g};{b}m"),
+            None => "\x1b[0m".to_string(),
+        }
     }
 }
 
@@ -403,7 +380,7 @@ mod tests {
         case::dockerfile("dockerfile", "FROM rust:latest\nRUN cargo build")
     )]
     fn test_highlighting_for_supported_languages(#[case] lang: &str, #[case] code: &str) {
-        let mut highlighter = SyntaxHighlighter::new();
+        let mut highlighter = SyntaxHighlighter::new(crate::theme::Theme::dark().syntax, false);
         let result = highlighter.highlight(code, Some(lang));
         assert!(
             result.contains("\x1b["),
@@ -416,7 +393,7 @@ mod tests {
     #[case("unknown", "some code")]
     #[case("unsupported", "another code")]
     fn test_highlighting_for_unsupported_languages(#[case] lang: &str, #[case] code: &str) {
-        let mut highlighter = SyntaxHighlighter::new();
+        let mut highlighter = SyntaxHighlighter::new(crate::theme::Theme::dark().syntax, false);
         let result = highlighter.highlight(code, Some(lang));
         assert_eq!(
             result, code,
@@ -427,14 +404,14 @@ mod tests {
 
     #[test]
     fn test_highlighting_empty_code() {
-        let mut highlighter = SyntaxHighlighter::new();
+        let mut highlighter = SyntaxHighlighter::new(crate::theme::Theme::dark().syntax, false);
         let result = highlighter.highlight("", Some("rust"));
         assert_eq!(result, "");
     }
 
     #[test]
     fn test_highlighting_with_invalid_code() {
-        let mut highlighter = SyntaxHighlighter::new();
+        let mut highlighter = SyntaxHighlighter::new(crate::theme::Theme::dark().syntax, false);
         // Intentionally malformed code for rust
         let code = "fn {";
         let result = highlighter.highlight(code, Some("rust"));
