@@ -10,7 +10,7 @@ license = "MIT"
 name = "mq-view"
 readme = "README.md"
 repository = "https://github.com/harehare/mq-view"
-version = "0.2.0"
+version = "0.2.1"
 
 [lib]
 name = "mq_view"
@@ -91,8 +91,8 @@ crossterm = {version = "0.29.0", features = ["use-dev-tty"]}
 image = "0.25"
 itertools = "0.15.0"
 miette = {version = "7.6.0", features = ["fancy"]}
-mq-lang = "0.8.3"
-mq-markdown = {version = "0.8.3", features = ["callout"]}
+mq-lang = "0.8.4"
+mq-markdown = {version = "0.8.4", features = ["callout"]}
 notify = {version = "8.2.0", default-features = false, features = ["macos_fsevent"]}
 ratatui = {version = "0.30.2", default-features = false, features = ["crossterm", "std"]}
 terminal_size = "0.4.4"
