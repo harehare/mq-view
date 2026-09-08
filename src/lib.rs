@@ -43,7 +43,7 @@ pub fn apply_query(content: &str, query: &str) -> miette::Result<String> {
     let nodes = results
         .into_iter()
         .map(|value| match value {
-            mq_lang::RuntimeValue::Markdown(node, _) => *node,
+            mq_lang::RuntimeValue::Markdown(node, _) => (*node).clone(),
             other => other.to_string().into(),
         })
         .collect();
