@@ -128,6 +128,7 @@ cat report.md | mq-view --pager
 | `Enter` | Open the link list; `j`/`k` to move, `Enter` to follow, `Esc` to cancel |
 | `[` / `]` | Go back / forward through followed links |
 | `L` | Toggle the code-block line-number gutter |
+| `m` | Toggle mouse capture on/off — turn it off to drag-select and copy text with your terminal |
 | `/` | Search; `Enter` to confirm, `Esc` to cancel |
 | `n` / `N` | Jump to the next / previous search match |
 | Mouse wheel | Scroll (or move the selection inside an open list) |
