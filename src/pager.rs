@@ -887,7 +887,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
 
 fn draw_title(frame: &mut Frame, area: Rect, app: &App) {
     let style = Style::default()
-        .fg(Color::Black)
+        .fg(Color::White)
         .bg(to_ratatui(app.config.theme.ui_accent))
         .add_modifier(Modifier::BOLD);
     let cols = Layout::default()
@@ -921,7 +921,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, content_height: usize) 
     match &app.mode {
         Mode::Search => {
             let style = Style::default()
-                .fg(Color::Black)
+                .fg(Color::White)
                 .bg(to_ratatui(app.config.theme.ui_accent))
                 .add_modifier(Modifier::BOLD);
             frame.render_widget(
@@ -932,13 +932,13 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, content_height: usize) 
         Mode::Normal => {
             if let Some(status) = &app.status {
                 let theme = &app.config.theme;
-                let bg = match status.kind {
-                    StatusKind::Info => theme.ui_accent,
-                    StatusKind::Success => theme.callout[1], // Tip's green
-                    StatusKind::Warn => theme.callout[3],    // Warning's yellow/amber
+                let (bg, fg) = match status.kind {
+                    StatusKind::Info => (theme.ui_accent, Color::White),
+                    StatusKind::Success => (theme.callout[1], Color::Black), // Tip's green
+                    StatusKind::Warn => (theme.callout[3], Color::Black), // Warning's yellow/amber
                 };
                 let style = Style::default()
-                    .fg(Color::Black)
+                    .fg(fg)
                     .bg(to_ratatui(bg))
                     .add_modifier(Modifier::BOLD);
                 frame.render_widget(
@@ -994,7 +994,7 @@ fn draw_list_popup(
         )
         .highlight_style(
             Style::default()
-                .fg(Color::Black)
+                .fg(Color::White)
                 .bg(accent)
                 .add_modifier(Modifier::BOLD),
         )
