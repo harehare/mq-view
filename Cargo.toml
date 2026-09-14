@@ -131,7 +131,7 @@ unicode-width = "0.2.2"
 viuer = {version = "0.11"}
 
 [dev-dependencies]
-rstest = "0.26.1"
+rstest = "0.27.0"
 
 [profile.release]
 codegen-units = 1
