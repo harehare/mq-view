@@ -287,6 +287,10 @@ struct App {
     mq_query: Option<String>,
     back_stack: Vec<(PathBuf, usize)>,
     forward_stack: Vec<(PathBuf, usize)>,
+    /// Whether the terminal is currently forwarding mouse events to us.
+    /// Turning this off hands the mouse back to the terminal so the user
+    /// can drag-select and copy text normally.
+    mouse_capture: bool,
 }
 
 fn max_scroll(doc: &Document, content_height: usize) -> usize {
@@ -686,6 +690,21 @@ fn handle_key(app: &mut App, key: KeyEvent, content_height: usize) -> KeyOutcome
             app.config.line_numbers = !app.config.line_numbers;
             rerender(app, content_height);
         }
+        KeyCode::Char('m') => {
+            app.mouse_capture = !app.mouse_capture;
+            let res = if app.mouse_capture {
+                execute!(io::stdout(), EnableMouseCapture)
+            } else {
+                execute!(io::stdout(), DisableMouseCapture)
+            };
+            app.status = Some(match res {
+                Ok(()) if app.mouse_capture => {
+                    Status::info("Mouse capture on — m to select text")
+                }
+                Ok(()) => Status::info("Mouse capture off — drag to select text, m to re-enable"),
+                Err(e) => Status::warn(format!("Failed to toggle mouse capture: {e}")),
+            });
+        }
         KeyCode::Char('[') => {
             let had_path = app.path.clone();
             navigate_history(app, -1, content_height);
@@ -933,7 +952,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, content_height: usize) 
                     .split(area);
                 frame.render_widget(
                     Paragraph::new(
-                        " q:quit  j/k:scroll  f/b/d/u:page  g/G:top/bottom  Tab:outline  Enter:links  [/]:back/fwd  L:line#  /:search  n/N:next/prev",
+                        " q:quit  j/k:scroll  f/b/d/u:page  g/G:top/bottom  Tab:outline  Enter:links  [/]:back/fwd  L:line#  m:mouse  /:search  n/N:next/prev",
                     )
                     .style(Style::default().fg(to_ratatui(app.config.theme.ui_muted))),
                     cols[0],
@@ -1149,6 +1168,7 @@ pub fn run_pager(
         mq_query,
         back_stack: Vec::new(),
         forward_stack: Vec::new(),
+        mouse_capture: true,
     };
 
     let result = event_loop(&mut terminal, &mut app, watcher);
