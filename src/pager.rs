@@ -60,7 +60,7 @@ impl Document {
         };
         let (rendered, headings) = render_markdown_with_outline(&markdown, config)?;
         let links = extract_links(&rendered);
-        let text = rendered
+        let text = strip_osc8(&rendered)
             .into_text()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
         let plain_lines = text.lines.iter().map(line_plain_text).collect();
@@ -122,6 +122,31 @@ fn extract_links(rendered: &str) -> Vec<LinkEntry> {
             rest = &after_url[text_end + OSC8_END.len()..];
         }
     }
+    out
+}
+
+/// Remove OSC 8 hyperlink escapes, keeping the link text. `ansi_to_tui`
+/// drops the rest of the line once it meets an OSC sequence, and the pager
+/// has no use for the escapes anyway: links are followed through the link
+/// list built by `extract_links`, not by clicking on the terminal cells.
+fn strip_osc8(rendered: &str) -> String {
+    const OSC8_START: &str = "\x1b]8;";
+    const ST: &str = "\x1b\\";
+
+    let mut out = String::with_capacity(rendered.len());
+    let mut rest = rendered;
+    while let Some(start) = rest.find(OSC8_START) {
+        out.push_str(&rest[..start]);
+        let after_start = &rest[start..];
+        match after_start.find(ST) {
+            Some(end) => rest = &after_start[end + ST.len()..],
+            None => {
+                rest = "";
+                break;
+            }
+        }
+    }
+    out.push_str(rest);
     out
 }
 
@@ -1221,6 +1246,41 @@ mod tests {
     #[test]
     fn extract_links_ignores_lines_without_osc8() {
         assert!(extract_links("plain text\nno links here").is_empty());
+    }
+
+    #[test]
+    fn strip_osc8_keeps_link_text() {
+        let rendered =
+            "for \x1b[4m\x1b]8;;https://a.example\x1b\\Markdown\x1b]8;;\x1b\\\x1b[0m processing.";
+        assert_eq!(
+            strip_osc8(rendered),
+            "for \x1b[4mMarkdown\x1b[0m processing."
+        );
+    }
+
+    #[test]
+    fn strip_osc8_leaves_plain_text_untouched() {
+        assert_eq!(
+            strip_osc8("plain \x1b[1mbold\x1b[0m"),
+            "plain \x1b[1mbold\x1b[0m"
+        );
+    }
+
+    #[test]
+    fn document_load_keeps_link_text_and_trailing_text() {
+        let doc = Document::load(
+            "See [Markdown](https://commonmark.org) for details.\n",
+            &RenderConfig::default(),
+        )
+        .unwrap();
+        let line = doc
+            .plain_lines
+            .iter()
+            .find(|l| l.contains("Markdown"))
+            .expect("link text should be rendered");
+        assert!(line.contains("for details."), "got {line:?}");
+        assert_eq!(doc.links.len(), 1);
+        assert_eq!(doc.links[0].url, "https://commonmark.org");
     }
 
     #[test]
