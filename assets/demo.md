@@ -8,6 +8,15 @@
 > Pipe any Markdown file into `mq-view` to get syntax highlighting,
 > callouts, tables, and mermaid diagrams right in your terminal.
 
+## Links
+
+Links are clickable in your terminal, and in pager mode you can follow them
+without leaving the viewer:
+
+- Web: [mq on GitHub](https://github.com/harehare/mq) and the [project site](https://mqlang.org)
+- Same document: [Jump to the table](#tables)
+- Another file: [More examples](demo-links.md)
+
 ## Code Examples
 
 ```rust
