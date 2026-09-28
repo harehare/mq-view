@@ -12,7 +12,7 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
-    MouseButton, MouseEvent, MouseEventKind,
+    KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
 use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{
@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
+use unicode_width::UnicodeWidthStr;
 
 /// Convert a theme color (always `TrueColor`) into ratatui's color type.
 fn to_ratatui(c: colored::Color) -> Color {
@@ -45,6 +46,9 @@ struct Document {
     plain_lines: Vec<String>,
     headings: Vec<HeadingEntry>,
     links: Vec<LinkEntry>,
+    /// Widest rendered line in terminal columns. Lines are never wrapped in
+    /// the pager, so anything wider than the viewport scrolls horizontally.
+    max_width: usize,
 }
 
 impl Document {
@@ -64,11 +68,13 @@ impl Document {
             .into_text()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
         let plain_lines = text.lines.iter().map(line_plain_text).collect();
+        let max_width = text.lines.iter().map(Line::width).max().unwrap_or(0);
         Ok(Self {
             text,
             plain_lines,
             headings,
             links,
+            max_width,
         })
     }
 
@@ -295,6 +301,11 @@ struct App {
     content: String,
     config: RenderConfig,
     scroll: usize,
+    /// Horizontal scroll offset in terminal columns.
+    hscroll: usize,
+    /// Width of the content viewport, refreshed every frame so horizontal
+    /// scrolling can be clamped without threading it through every call.
+    content_width: usize,
     show_outline: bool,
     outline_state: ListState,
     show_links: bool,
@@ -320,6 +331,26 @@ struct App {
 
 fn max_scroll(doc: &Document, content_height: usize) -> usize {
     doc.line_count().saturating_sub(content_height.max(1))
+}
+
+fn max_hscroll(app: &App) -> usize {
+    app.doc.max_width.saturating_sub(app.content_width.max(1))
+}
+
+fn hscroll_by(app: &mut App, delta: isize) {
+    let max = max_hscroll(app);
+    app.hscroll = (app.hscroll as isize + delta).clamp(0, max as isize) as usize;
+}
+
+/// Size of the scrollable content area for a terminal of `term_width` x
+/// `term_height`: the title bar and footer take a row each, the vertical
+/// scrollbar a column, and a horizontal scrollbar a row when the document
+/// is wider than the viewport. `draw` lays out the screen the same way.
+fn viewport(doc: &Document, term_width: u16, term_height: u16) -> (usize, usize) {
+    let width = term_width.saturating_sub(1).max(1) as usize;
+    let hbar = u16::from(doc.max_width > width);
+    let height = term_height.saturating_sub(2 + hbar).max(1) as usize;
+    (width, height)
 }
 
 fn clamp_scroll(line: usize, total_lines: usize, content_height: usize) -> usize {
@@ -491,6 +522,7 @@ fn follow_link(app: &mut App, link_idx: usize, content_height: usize) {
     app.mq_query = None;
     app.doc = doc;
     app.scroll = 0;
+    app.hscroll = 0;
     app.search_input.clear();
     app.matches.clear();
     app.current_match = None;
@@ -548,14 +580,25 @@ fn navigate_history(app: &mut App, direction: isize, content_height: usize) {
     app.content = content;
     app.doc = doc;
     app.scroll = clamp_scroll(target_scroll, app.doc.line_count(), content_height);
+    app.hscroll = 0;
     app.search_input.clear();
     app.matches.clear();
     app.current_match = None;
 }
 
 fn jump_to_match(app: &mut App, content_height: usize) {
-    if let Some(m) = app.current_match.and_then(|i| app.matches.get(i)) {
-        app.scroll = clamp_scroll(m.line, app.doc.line_count(), content_height);
+    let Some(m) = app.current_match.and_then(|i| app.matches.get(i)) else {
+        return;
+    };
+    app.scroll = clamp_scroll(m.line, app.doc.line_count(), content_height);
+
+    // Scroll horizontally too if the match is outside the visible columns.
+    let line = &app.doc.plain_lines[m.line];
+    let start_col = UnicodeWidthStr::width(&line[..m.start]);
+    let end_col = UnicodeWidthStr::width(&line[..m.end]);
+    let width = app.content_width.max(1);
+    if start_col < app.hscroll || end_col > app.hscroll + width {
+        app.hscroll = start_col.saturating_sub(width / 4).min(max_hscroll(app));
     }
 }
 
@@ -589,6 +632,7 @@ fn rerender(app: &mut App, content_height: usize) {
             app.matches = find_matches(&app.doc.plain_lines, &app.search_input);
             app.current_match = None;
             app.scroll = app.scroll.min(max_scroll(&app.doc, content_height));
+            app.hscroll = app.hscroll.min(max_hscroll(app));
         }
         Err(e) => {
             app.status = Some(Status::warn(format!("Render failed: {e}")));
@@ -693,6 +737,16 @@ fn handle_key(app: &mut App, key: KeyEvent, content_height: usize) -> KeyOutcome
         KeyCode::Char('u') => scroll_by(app, -((content_height as isize) / 2), content_height),
         KeyCode::Char('g') | KeyCode::Home => app.scroll = 0,
         KeyCode::Char('G') | KeyCode::End => app.scroll = max_scroll(&app.doc, content_height),
+        KeyCode::Left if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            hscroll_by(app, -((app.content_width / 2) as isize))
+        }
+        KeyCode::Right if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            hscroll_by(app, (app.content_width / 2) as isize)
+        }
+        KeyCode::Char('h') | KeyCode::Left => hscroll_by(app, -HSCROLL_STEP),
+        KeyCode::Char('l') | KeyCode::Right => hscroll_by(app, HSCROLL_STEP),
+        KeyCode::Char('0') => app.hscroll = 0,
+        KeyCode::Char('$') => app.hscroll = max_hscroll(app),
         KeyCode::Tab => {
             app.show_outline = true;
             app.outline_state.select(nearest_heading_index(app));
@@ -723,9 +777,7 @@ fn handle_key(app: &mut App, key: KeyEvent, content_height: usize) -> KeyOutcome
                 execute!(io::stdout(), DisableMouseCapture)
             };
             app.status = Some(match res {
-                Ok(()) if app.mouse_capture => {
-                    Status::info("Mouse capture on — m to select text")
-                }
+                Ok(()) if app.mouse_capture => Status::info("Mouse capture on — m to select text"),
                 Ok(()) => Status::info("Mouse capture off — drag to select text, m to re-enable"),
                 Err(e) => Status::warn(format!("Failed to toggle mouse capture: {e}")),
             });
@@ -749,6 +801,9 @@ fn handle_key(app: &mut App, key: KeyEvent, content_height: usize) -> KeyOutcome
     KeyOutcome::Continue
 }
 
+/// Columns moved per `h`/`l` press or horizontal wheel tick.
+const HSCROLL_STEP: isize = 4;
+
 /// Index of the list row a click landed on, given the popup's outer `Rect`
 /// (as drawn by `draw_list_popup`, which borders the list on all sides).
 fn list_item_at(rect: Rect, row: u16) -> Option<usize> {
@@ -760,7 +815,14 @@ fn list_item_at(rect: Rect, row: u16) -> Option<usize> {
 
 fn handle_mouse(app: &mut App, me: MouseEvent, content_height: usize) -> KeyOutcome {
     let pos = Position::new(me.column, me.row);
+    let popup_open = app.show_outline || app.show_links;
+    // Shift+wheel is the usual way to scroll sideways on a vertical wheel.
+    let shift = me.modifiers.contains(KeyModifiers::SHIFT);
     match me.kind {
+        MouseEventKind::ScrollLeft if !popup_open => hscroll_by(app, -HSCROLL_STEP),
+        MouseEventKind::ScrollRight if !popup_open => hscroll_by(app, HSCROLL_STEP),
+        MouseEventKind::ScrollUp if shift && !popup_open => hscroll_by(app, -HSCROLL_STEP),
+        MouseEventKind::ScrollDown if shift && !popup_open => hscroll_by(app, HSCROLL_STEP),
         MouseEventKind::ScrollDown => {
             if app.show_outline {
                 outline_move(app, 1);
@@ -822,12 +884,19 @@ fn draw(frame: &mut Frame, app: &mut App) {
     let body_area = rows[1];
     let footer_area = rows[2];
 
+    let (content_width, _) = viewport(&app.doc, area.width, area.height);
+    let has_hbar = app.doc.max_width > content_width;
+    let body_rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(u16::from(has_hbar))])
+        .split(body_area);
     let cols = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
-        .split(body_area);
+        .split(body_rows[0]);
     let content_area = cols[0];
     let scrollbar_area = cols[1];
+    let hbar_area = body_rows[1];
 
     let height = content_area.height as usize;
     let total = app.doc.line_count();
@@ -851,9 +920,30 @@ fn draw(frame: &mut Frame, app: &mut App) {
         })
         .collect();
 
-    frame.render_widget(Paragraph::new(Text::from(visible_lines)), content_area);
+    let hscroll = app.hscroll.min(u16::MAX as usize) as u16;
+    frame.render_widget(
+        Paragraph::new(Text::from(visible_lines)).scroll((0, hscroll)),
+        content_area,
+    );
     draw_title(frame, title_area, app);
-    draw_scrollbar(frame, scrollbar_area, total, start, &theme);
+    draw_scrollbar(
+        frame,
+        scrollbar_area,
+        ScrollbarOrientation::VerticalRight,
+        total,
+        start,
+        &theme,
+    );
+    if has_hbar {
+        draw_scrollbar(
+            frame,
+            hbar_area,
+            ScrollbarOrientation::HorizontalBottom,
+            max_hscroll(app) + 1,
+            app.hscroll,
+            &theme,
+        );
+    }
     draw_footer(frame, footer_area, app, height);
 
     if app.show_outline {
@@ -932,9 +1022,16 @@ fn draw_title(frame: &mut Frame, area: Rect, app: &App) {
     );
 }
 
-fn draw_scrollbar(frame: &mut Frame, area: Rect, total: usize, position: usize, theme: &Theme) {
+fn draw_scrollbar(
+    frame: &mut Frame,
+    area: Rect,
+    orientation: ScrollbarOrientation,
+    total: usize,
+    position: usize,
+    theme: &Theme,
+) {
     let mut state = ScrollbarState::new(total).position(position);
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+    let scrollbar = Scrollbar::new(orientation)
         .begin_symbol(None)
         .end_symbol(None)
         .track_style(Style::default().fg(to_ratatui(theme.ui_muted)))
@@ -977,7 +1074,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, content_height: usize) 
                     .split(area);
                 frame.render_widget(
                     Paragraph::new(
-                        " q:quit  j/k:scroll  f/b/d/u:page  g/G:top/bottom  Tab:outline  Enter:links  [/]:back/fwd  L:line#  m:mouse  /:search  n/N:next/prev",
+                        " q:quit  j/k:scroll  h/l:←→  f/b/d/u:page  g/G:top/bottom  Tab:outline  Enter:links  [/]:back/fwd  L:line#  m:mouse  /:search  n/N:next/prev",
                     )
                     .style(Style::default().fg(to_ratatui(app.config.theme.ui_muted))),
                     cols[0],
@@ -1076,9 +1173,10 @@ fn event_loop(
     mut watcher: Option<(RecommendedWatcher, Receiver<()>)>,
 ) -> io::Result<()> {
     loop {
-        let (_, term_height) = crossterm_terminal::size()?;
-        // Title bar (1 row) + footer (1 row) surround the scrollable body.
-        let content_height = term_height.saturating_sub(2).max(1) as usize;
+        let (term_width, term_height) = crossterm_terminal::size()?;
+        let (content_width, content_height) = viewport(&app.doc, term_width, term_height);
+        app.content_width = content_width;
+        app.hscroll = app.hscroll.min(max_hscroll(app));
 
         if let Some((_, rx)) = &watcher
             && rx.try_iter().last().is_some()
@@ -1131,6 +1229,7 @@ fn reload(app: &mut App, content_height: usize) {
             app.matches = find_matches(&app.doc.plain_lines, &app.search_input);
             app.current_match = None;
             app.scroll = app.scroll.min(max_scroll(&app.doc, content_height));
+            app.hscroll = app.hscroll.min(max_hscroll(app));
             app.status = Some(Status::success("Reloaded"));
         }
         Err(e) => {
@@ -1177,6 +1276,8 @@ pub fn run_pager(
         content: content.to_string(),
         config: config.clone(),
         scroll: 0,
+        hscroll: 0,
+        content_width: 0,
         show_outline: false,
         outline_state: ListState::default(),
         show_links: false,
@@ -1288,6 +1389,17 @@ mod tests {
         assert_eq!(slugify("Getting Started"), "getting-started");
         assert_eq!(slugify("mq Query Filtering!"), "mq-query-filtering");
         assert_eq!(slugify("  Trim Me  "), "trim-me");
+    }
+
+    #[test]
+    fn viewport_reserves_a_row_for_the_horizontal_scrollbar_only_when_needed() {
+        let narrow = Document::load("short\n", &RenderConfig::default()).unwrap();
+        assert_eq!(viewport(&narrow, 80, 24), (79, 22));
+
+        let wide =
+            Document::load(&format!("{}\n", "x".repeat(200)), &RenderConfig::default()).unwrap();
+        assert!(wide.max_width >= 200);
+        assert_eq!(viewport(&wide, 80, 24), (79, 21));
     }
 
     #[test]

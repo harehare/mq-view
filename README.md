@@ -124,6 +124,9 @@ cat report.md | mq-view --pager
 | `Space` / `PageDown` / `f`, `PageUp` / `b` | Scroll a page down / up |
 | `d` / `u` (with or without `Ctrl`) | Scroll half a page down / up |
 | `g` / `Home`, `G` / `End` | Jump to top / bottom |
+| `h` / `l`, `←` / `→` | Scroll left / right (long lines are never wrapped) |
+| `Shift+←` / `Shift+→` | Scroll half a screen left / right |
+| `0` / `$` | Jump to the start / end of the widest line |
 | `Tab` | Toggle the heading outline; `j`/`k` to move, `Enter` to jump |
 | `Enter` | Open the link list; `j`/`k` to move, `Enter` to follow, `Esc` to cancel |
 | `[` / `]` | Go back / forward through followed links |
@@ -132,6 +135,7 @@ cat report.md | mq-view --pager
 | `/` | Search; `Enter` to confirm, `Esc` to cancel |
 | `n` / `N` | Jump to the next / previous search match |
 | Mouse wheel | Scroll (or move the selection inside an open list) |
+| `Shift` + mouse wheel, horizontal wheel/trackpad | Scroll left / right |
 | Mouse click | Select and jump to an item in the heading/link list |
 | `q` / `Esc` | Quit |
 
