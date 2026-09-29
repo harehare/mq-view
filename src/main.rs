@@ -1,7 +1,9 @@
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use mq_markdown::Markdown;
-use mq_view::{RenderConfig, Theme, ThemeMode, render_markdown_with_config, run_pager};
+use mq_view::{
+    AccentColor, RenderConfig, Theme, ThemeMode, render_markdown_with_config, run_pager,
+};
 use std::fs;
 use std::io::{self, BufWriter, Write};
 use std::io::{IsTerminal, Read};
@@ -29,6 +31,10 @@ pub struct Args {
     /// and falls back to dark.
     #[arg(long = "theme", value_enum, default_value_t = ThemeMode::Auto)]
     theme: ThemeMode,
+
+    /// Accent color for the title bar, scrollbar and popups.
+    #[arg(long = "accent", value_enum, default_value_t = AccentColor::Cyan)]
+    accent: AccentColor,
 
     /// Disable all ANSI color output
     #[arg(long = "no-color")]
@@ -65,7 +71,7 @@ fn main() -> Result<()> {
 
     let config = RenderConfig {
         header_full_width_highlight: !args.no_header_highlight,
-        theme: Theme::resolve(args.theme),
+        theme: Theme::resolve_with_accent(args.theme, args.accent),
         no_color,
         line_numbers: args.line_numbers,
         ..RenderConfig::default()

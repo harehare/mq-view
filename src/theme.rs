@@ -15,6 +15,36 @@ pub enum ThemeMode {
     Light,
 }
 
+/// Accent color for the title bar, scrollbar and popups. Each variant has a
+/// dark-background and a light-background shade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Default)]
+pub enum AccentColor {
+    #[default]
+    Cyan,
+    Blue,
+    Green,
+    Magenta,
+    Orange,
+}
+
+impl AccentColor {
+    fn color(self, light: bool) -> Color {
+        let (r, g, b) = match (self, light) {
+            (Self::Cyan, false) => (0, 139, 153),
+            (Self::Cyan, true) => (0, 115, 130),
+            (Self::Blue, false) => (0, 0, 238),
+            (Self::Blue, true) => (0, 90, 200),
+            (Self::Green, false) => (30, 140, 70),
+            (Self::Green, true) => (20, 110, 50),
+            (Self::Magenta, false) => (170, 50, 170),
+            (Self::Magenta, true) => (140, 30, 140),
+            (Self::Orange, false) => (200, 100, 0),
+            (Self::Orange, true) => (170, 80, 0),
+        };
+        Color::TrueColor { r, g, b }
+    }
+}
+
 /// Indexed the same way as `SyntaxHighlighter`'s tree-sitter highlight
 /// capture list (attribute, constant, function.builtin, ...).
 pub type SyntaxPalette = [(u8, u8, u8); 26];
@@ -222,7 +252,7 @@ impl Theme {
                 g: 140,
                 b: 0,
             },
-            ui_accent: Color::TrueColor { r: 0, g: 0, b: 238 },
+            ui_accent: AccentColor::Cyan.color(false),
             ui_muted: Color::TrueColor {
                 r: 128,
                 g: 128,
@@ -350,11 +380,7 @@ impl Theme {
                 g: 90,
                 b: 0,
             },
-            ui_accent: Color::TrueColor {
-                r: 0,
-                g: 90,
-                b: 200,
-            },
+            ui_accent: AccentColor::Cyan.color(true),
             ui_muted: Color::TrueColor {
                 r: 110,
                 g: 110,
@@ -367,17 +393,18 @@ impl Theme {
     /// Terminals that don't set `COLORFGBG` (iTerm2, Kitty, Alacritty, ...)
     /// fall back to `Dark` under `Auto`.
     pub fn resolve(mode: ThemeMode) -> Self {
-        match mode {
-            ThemeMode::Dark => Self::dark(),
-            ThemeMode::Light => Self::light(),
-            ThemeMode::Auto => {
-                if is_light_background() {
-                    Self::light()
-                } else {
-                    Self::dark()
-                }
-            }
-        }
+        Self::resolve_with_accent(mode, AccentColor::default())
+    }
+
+    pub fn resolve_with_accent(mode: ThemeMode, accent: AccentColor) -> Self {
+        let light = match mode {
+            ThemeMode::Dark => false,
+            ThemeMode::Light => true,
+            ThemeMode::Auto => is_light_background(),
+        };
+        let mut theme = if light { Self::light() } else { Self::dark() };
+        theme.ui_accent = accent.color(light);
+        theme
     }
 }
 
