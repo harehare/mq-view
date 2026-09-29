@@ -92,6 +92,7 @@ echo "# Hello\n\n\`\`\`rust\nfn main() {}\n\`\`\`" | mq-view
 mq-view --theme dark README.md    # force the dark palette
 mq-view --theme light README.md   # force the light palette
 mq-view --theme auto README.md    # default: guess from the COLORFGBG env var, fall back to dark
+mq-view --accent blue README.md   # accent color: cyan (default), blue, green, magenta, orange
 mq-view --no-color README.md      # disable all ANSI color output (also respects $NO_COLOR)
 ```
 

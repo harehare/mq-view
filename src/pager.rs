@@ -1031,7 +1031,13 @@ fn draw_scrollbar(
     theme: &Theme,
 ) {
     let mut state = ScrollbarState::new(total).position(position);
+    let (track, thumb) = match orientation {
+        ScrollbarOrientation::VerticalRight | ScrollbarOrientation::VerticalLeft => ("│", "┃"),
+        _ => ("─", "━"),
+    };
     let scrollbar = Scrollbar::new(orientation)
+        .track_symbol(Some(track))
+        .thumb_symbol(thumb)
         .begin_symbol(None)
         .end_symbol(None)
         .track_style(Style::default().fg(to_ratatui(theme.ui_muted)))
