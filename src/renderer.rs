@@ -213,7 +213,7 @@ pub(crate) fn render_markdown_with_outline(
             let line = bytecount_newlines(&output) + 1;
             headings.push(HeadingEntry {
                 line,
-                depth: heading.depth,
+                depth: heading.depth.get(),
                 title: render_inline_content(&heading.values),
             });
         }
@@ -414,7 +414,7 @@ fn render_node_inline<W: Write>(
             // Repeat the marker once per heading level (▶, ▶▶, ▶▶▶, ...) so
             // depth stays legible even in fonts that render circled digits
             // (①②③) too small to read at a glance.
-            let symbol = "▶".repeat(heading.depth.clamp(1, 6) as usize);
+            let symbol = "▶".repeat(usize::from(heading.depth));
 
             let text = render_inline_content(&heading.values);
 
@@ -426,7 +426,7 @@ fn render_node_inline<W: Write>(
 
                 match theme
                     .heading_bg
-                    .get(heading.depth.saturating_sub(1) as usize)
+                    .get(usize::from(heading.depth.get().saturating_sub(1)))
                 {
                     Some(&bg) => {
                         writeln!(
@@ -449,7 +449,7 @@ fn render_node_inline<W: Write>(
             } else {
                 let fg = theme
                     .heading_plain
-                    .get(heading.depth.saturating_sub(1) as usize)
+                    .get(usize::from(heading.depth.get().saturating_sub(1)))
                     .copied()
                     .unwrap_or(theme.heading_fallback);
                 writeln!(
