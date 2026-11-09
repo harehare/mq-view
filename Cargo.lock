@@ -2944,7 +2944,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys",
@@ -3347,9 +3347,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-mq"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dc44d3aec1e594cc4fa60978885b85d221f2ebb9b4b2468f0c96ea42656e117"
+checksum = "74393c0f2d730cc62e3050e08eba01e438ec21c75156c16ff34afc208adda93a"
 dependencies = [
  "cc",
  "tree-sitter-language",
